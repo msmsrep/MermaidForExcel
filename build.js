@@ -70,7 +70,8 @@ const [, , mode = "build"] = process.argv; // node build.js [build|watch|serve]
   if (mode === "serve") {
     // ── esbuild の HTTP サーバ + HTTPS プロキシ ────────────────────────────
     const ctx = await esbuild.context(BUNDLE);
-    const { host, port: ebPort } = await ctx.serve({ servedir: DIST });
+    const { port: ebPort } = await ctx.serve({ servedir: DIST });
+    const host = "localhost";
 
     let tlsOpts;
     try {

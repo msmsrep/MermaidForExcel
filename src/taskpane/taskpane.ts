@@ -31,7 +31,7 @@ Office.onReady(() => {
 
   insertBtn.addEventListener("click", async () => {
     errDiv.textContent = "";
-    const svgEl = preview.querySelector("svg");
+    const svgEl = preview.querySelector<SVGSVGElement>("svg");
     if (!svgEl) {
       errDiv.textContent = "先にレンダリングしてください";
       return;
@@ -54,7 +54,7 @@ Office.onReady(() => {
  * SVG 要素を PNG の base64 文字列（data: プレフィックスなし）に変換する。
  * Canvas を経由することで Excel の addImage API が要求する PNG フォーマットに対応する。
  */
-async function svgToBase64Png(svgEl: SVGElement): Promise<string> {
+async function svgToBase64Png(svgEl: SVGSVGElement): Promise<string> {
   const svgStr = new XMLSerializer().serializeToString(svgEl);
   const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
 
