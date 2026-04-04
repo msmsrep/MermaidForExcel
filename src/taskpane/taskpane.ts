@@ -11,13 +11,13 @@ Office.onReady(() => {
   const formatTabs =
     document.querySelectorAll<HTMLButtonElement>(".format-tab");
 
-  let selectedFormat: "png" | "jpeg" = "png";
+  let selectedFormat: "png" | "jpeg" | "svg" = "png";
 
   formatTabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       formatTabs.forEach((t) => t.classList.remove("active"));
       tab.classList.add("active");
-      selectedFormat = tab.dataset.format as "png" | "jpeg";
+      selectedFormat = tab.dataset.format as "png" | "jpeg" | "svg";
     });
   });
 
@@ -50,15 +50,33 @@ Office.onReady(() => {
     }
 
     try {
-      const base64 =
-        selectedFormat === "jpeg"
-          ? await svgToBase64Jpeg(svgEl)
-          : await svgToBase64Png(svgEl);
-      await Excel.run(async (ctx) => {
-        const sheet = ctx.workbook.worksheets.getActiveWorksheet();
-        sheet.shapes.addImage(base64);
-        await ctx.sync();
-      });
+      if (selectedFormat === "svg") {
+        const svgStr = new XMLSerializer().serializeToString(svgEl);
+        await Excel.run(async (ctx) => {
+          const sheet = ctx.workbook.worksheets.getActiveWorksheet();
+          if (typeof (sheet.shapes as any).addSvg === "function") {
+            // ExcelApi 1.9 以降
+            (sheet.shapes as any).addSvg(svgStr);
+          } else {
+            // SVG 非対応バージョンは PNG へフォールバック
+            const base64 = await svgToBase64Png(svgEl);
+            sheet.shapes.addImage(base64);
+            errDiv.textContent =
+              "このバージョンの Excel は SVG 挿入に対応していないため PNG で挿入しました。";
+          }
+          await ctx.sync();
+        });
+      } else {
+        const base64 =
+          selectedFormat === "jpeg"
+            ? await svgToBase64Jpeg(svgEl)
+            : await svgToBase64Png(svgEl);
+        await Excel.run(async (ctx) => {
+          const sheet = ctx.workbook.worksheets.getActiveWorksheet();
+          sheet.shapes.addImage(base64);
+          await ctx.sync();
+        });
+      }
     } catch (e) {
       errDiv.textContent = `挿入エラー: ${e instanceof Error ? e.message : String(e)}`;
     }
