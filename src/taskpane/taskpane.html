@@ -84,6 +84,39 @@
         cursor: not-allowed;
       }
 
+      .format-tabs {
+        display: flex;
+        gap: 0;
+        flex-shrink: 0;
+        border: 1px solid #c7c7c7;
+        border-radius: 4px;
+        overflow: hidden;
+        width: fit-content;
+      }
+      .format-tab {
+        flex: 1;
+        padding: 5px 14px;
+        border: none;
+        background: #f3f2f1;
+        color: #323130;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          background 0.1s,
+          color 0.1s;
+      }
+      .format-tab:not(:last-child) {
+        border-right: 1px solid #c7c7c7;
+      }
+      .format-tab.active {
+        background: #0078d4;
+        color: #fff;
+      }
+      .format-tab:not(.active):hover {
+        background: #edebe9;
+      }
+
       #error {
         color: #a4262c;
         font-size: 12px;
@@ -123,6 +156,11 @@ graph TD
     C --> E[終了]
     D --> E</textarea
     >
+
+    <div class="format-tabs">
+      <button class="format-tab active" data-format="png">PNG</button>
+      <button class="format-tab" data-format="jpeg">JPEG</button>
+    </div>
 
     <div class="buttons">
       <button id="render-btn">▶ レンダリング</button>

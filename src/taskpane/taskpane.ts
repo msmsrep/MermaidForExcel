@@ -8,6 +8,18 @@ Office.onReady(() => {
   const errDiv = document.getElementById("error") as HTMLDivElement;
   const renderBtn = document.getElementById("render-btn") as HTMLButtonElement;
   const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
+  const formatTabs =
+    document.querySelectorAll<HTMLButtonElement>(".format-tab");
+
+  let selectedFormat: "png" | "jpeg" = "png";
+
+  formatTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      formatTabs.forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      selectedFormat = tab.dataset.format as "png" | "jpeg";
+    });
+  });
 
   renderBtn.addEventListener("click", async () => {
     errDiv.textContent = "";
@@ -38,7 +50,10 @@ Office.onReady(() => {
     }
 
     try {
-      const base64 = await svgToBase64Png(svgEl);
+      const base64 =
+        selectedFormat === "jpeg"
+          ? await svgToBase64Jpeg(svgEl)
+          : await svgToBase64Png(svgEl);
       await Excel.run(async (ctx) => {
         const sheet = ctx.workbook.worksheets.getActiveWorksheet();
         sheet.shapes.addImage(base64);
@@ -75,4 +90,39 @@ async function svgToBase64Png(svgEl: SVGSVGElement): Promise<string> {
   canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
 
   return canvas.toDataURL("image/png").replace("data:image/png;base64,", "");
+}
+
+/**
+ * SVG 要素を JPEG の base64 文字列（data: プレフィックスなし）に変換する。
+ */
+async function svgToBase64Jpeg(
+  svgEl: SVGSVGElement,
+  quality = 0.92,
+): Promise<string> {
+  const svgStr = new XMLSerializer().serializeToString(svgEl);
+  const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = url;
+  });
+
+  const vb = svgEl.viewBox?.baseVal;
+  const w = (vb && vb.width > 0 ? vb.width : img.naturalWidth) || 800;
+  const h = (vb && vb.height > 0 ? vb.height : img.naturalHeight) || 600;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx2d = canvas.getContext("2d")!;
+  // JPEG は透過をサポートしないため白背景で塗りつぶす
+  ctx2d.fillStyle = "#ffffff";
+  ctx2d.fillRect(0, 0, w, h);
+  ctx2d.drawImage(img, 0, 0, w, h);
+
+  return canvas
+    .toDataURL("image/jpeg", quality)
+    .replace("data:image/jpeg;base64,", "");
 }
