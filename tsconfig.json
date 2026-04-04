@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "ES2017",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "lib": [
+            "ES2017",
+            "DOM"
+        ],
+        "types": [
+            "office-js"
+        ],
+        "strict": true,
+        "noEmit": true
+    },
+    "include": [
+        "src/**/*"
+    ]
+}
