@@ -83,6 +83,17 @@
         background: #a8a8a8;
         cursor: not-allowed;
       }
+      #download-btn {
+        background: #5c2d91;
+        color: #fff;
+      }
+      #download-btn:hover {
+        background: #451f6e;
+      }
+      #download-btn:disabled {
+        background: #a8a8a8;
+        cursor: not-allowed;
+      }
 
       #format-select {
         padding: 7px 8px;
@@ -161,6 +172,7 @@ graph TD
         </select>
         <button id="insert-btn" disabled>↓ Excel に挿入</button>
       </div>
+      <button id="download-btn" disabled>⬇ ダウンロード</button>
     </div>
 
     <div id="error"></div>

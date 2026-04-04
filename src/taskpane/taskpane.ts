@@ -8,6 +8,9 @@ Office.onReady(() => {
   const errDiv = document.getElementById("error") as HTMLDivElement;
   const renderBtn = document.getElementById("render-btn") as HTMLButtonElement;
   const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
+  const downloadBtn = document.getElementById(
+    "download-btn",
+  ) as HTMLButtonElement;
   const formatSelect = document.getElementById(
     "format-select",
   ) as HTMLSelectElement;
@@ -32,9 +35,46 @@ Office.onReady(() => {
       const { svg } = await mermaid.render("mermaid-graph", code);
       preview.innerHTML = svg;
       insertBtn.disabled = false;
+      downloadBtn.disabled = false;
     } catch (e) {
       preview.innerHTML = "";
+      insertBtn.disabled = true;
+      downloadBtn.disabled = true;
       errDiv.textContent = `レンダリングエラー: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  });
+
+  downloadBtn.addEventListener("click", async () => {
+    errDiv.textContent = "";
+    const svgEl = preview.querySelector<SVGSVGElement>("svg");
+    if (!svgEl) {
+      errDiv.textContent = "先にレンダリングしてください";
+      return;
+    }
+
+    try {
+      let dataUrl: string;
+      let filename: string;
+      if (selectedFormat === "svg") {
+        const svgStr = new XMLSerializer().serializeToString(svgEl);
+        dataUrl =
+          "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+        filename = "diagram.svg";
+      } else if (selectedFormat === "jpeg") {
+        const base64 = await svgToBase64Jpeg(svgEl);
+        dataUrl = "data:image/jpeg;base64," + base64;
+        filename = "diagram.jpg";
+      } else {
+        const base64 = await svgToBase64Png(svgEl);
+        dataUrl = "data:image/png;base64," + base64;
+        filename = "diagram.png";
+      }
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = filename;
+      a.click();
+    } catch (e) {
+      errDiv.textContent = `ダウンロードエラー: ${e instanceof Error ? e.message : String(e)}`;
     }
   });
 
