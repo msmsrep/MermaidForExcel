@@ -4,12 +4,16 @@
   "description": "Mermaid ダイアグラムを Excel に挿入する Office アドイン",
   "scripts": {
     "build": "node build.js",
+    "build:dev": "node build.js",
     "watch": "node build.js watch",
-    "start": "node build.js serve"
+    "dev-server": "node build.js serve",
+    "start": "office-addin-debugging start manifest.xml",
+    "stop": "office-addin-debugging stop manifest.xml"
   },
   "devDependencies": {
     "@types/office-js": "^1.0.536",
     "esbuild": "^0.25.0",
+    "office-addin-debugging": "^6.0.6",
     "office-addin-dev-certs": "^1.12.0",
     "typescript": "^5.4.0"
   },
