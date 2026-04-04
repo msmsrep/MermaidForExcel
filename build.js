@@ -11,6 +11,9 @@ const ROOT = __dirname;
 const DIST = path.join(ROOT, "dist");
 const PORT = 3000;
 
+const DEV_BASE_URL = "https://localhost:3000";
+const PROD_BASE_URL = "https://msmsrep.github.io/MermaidForExcel/dist";
+
 // ── アイコン生成 ──────────────────────────────────────────────────────────────
 // 最小の 1×1 PNG プレースホルダー（assets/ が空の場合のみ生成）
 const PLACEHOLDER_PNG = Buffer.from(
@@ -49,6 +52,16 @@ function copyStatics() {
   }
 }
 
+// ── manifest.xml の URL を書き換えて dist/ へ出力 ────────────────────────────
+/**
+ * @param {string} baseUrl
+ */
+function copyManifest(baseUrl) {
+  const src = fs.readFileSync(path.join(ROOT, "manifest.xml"), "utf8");
+  const out = src.replaceAll(DEV_BASE_URL, baseUrl);
+  fs.writeFileSync(path.join(DIST, "manifest.xml"), out, "utf8");
+}
+
 // ── esbuild 共通オプション ────────────────────────────────────────────────────
 /** @type {import('esbuild').BuildOptions} */
 const BUNDLE = {
@@ -68,6 +81,7 @@ const [, , mode = "build"] = process.argv; // node build.js [build|watch|serve]
   copyStatics();
 
   if (mode === "serve") {
+    copyManifest(DEV_BASE_URL);
     // ── esbuild の HTTP サーバ + HTTPS プロキシ ────────────────────────────
     const ctx = await esbuild.context(BUNDLE);
     const { port: ebPort } = await ctx.serve({ servedir: DIST });
@@ -116,11 +130,13 @@ const [, , mode = "build"] = process.argv; // node build.js [build|watch|serve]
       });
   } else if (mode === "watch") {
     // ── ファイル監視モード ────────────────────────────────────────────────
+    copyManifest(DEV_BASE_URL);
     const ctx = await esbuild.context({ ...BUNDLE, sourcemap: "inline" });
     await ctx.watch();
     console.log("  watch モード開始 (Ctrl+C で停止)");
   } else {
     // ── ワンタイムビルド ──────────────────────────────────────────────────
+    copyManifest(PROD_BASE_URL);
     const ctx = await esbuild.context(BUNDLE);
     await ctx.rebuild();
     await ctx.dispose();
