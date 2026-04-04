@@ -8,17 +8,14 @@ Office.onReady(() => {
   const errDiv = document.getElementById("error") as HTMLDivElement;
   const renderBtn = document.getElementById("render-btn") as HTMLButtonElement;
   const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
-  const formatTabs =
-    document.querySelectorAll<HTMLButtonElement>(".format-tab");
+  const formatSelect = document.getElementById(
+    "format-select",
+  ) as HTMLSelectElement;
 
   let selectedFormat: "png" | "jpeg" | "svg" = "png";
 
-  formatTabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      formatTabs.forEach((t) => t.classList.remove("active"));
-      tab.classList.add("active");
-      selectedFormat = tab.dataset.format as "png" | "jpeg" | "svg";
-    });
+  formatSelect.addEventListener("change", () => {
+    selectedFormat = formatSelect.value as "png" | "jpeg" | "svg";
   });
 
   renderBtn.addEventListener("click", async () => {

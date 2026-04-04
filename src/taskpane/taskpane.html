@@ -84,37 +84,31 @@
         cursor: not-allowed;
       }
 
-      .format-tabs {
-        display: flex;
-        gap: 0;
-        flex-shrink: 0;
+      #format-select {
+        padding: 7px 8px;
         border: 1px solid #c7c7c7;
-        border-radius: 4px;
-        overflow: hidden;
-        width: fit-content;
-      }
-      .format-tab {
-        flex: 1;
-        padding: 5px 14px;
-        border: none;
+        border-radius: 4px 0 0 4px;
         background: #f3f2f1;
         color: #323130;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        transition:
-          background 0.1s,
-          color 0.1s;
+        flex-shrink: 0;
+        height: 100%;
       }
-      .format-tab:not(:last-child) {
-        border-right: 1px solid #c7c7c7;
+      #format-select:focus {
+        outline: none;
+        border-color: #0078d4;
       }
-      .format-tab.active {
-        background: #0078d4;
-        color: #fff;
+      .insert-group {
+        display: flex;
+        flex: 1;
       }
-      .format-tab:not(.active):hover {
-        background: #edebe9;
+      .insert-group #format-select {
+        border-right: none;
+      }
+      .insert-group #insert-btn {
+        border-radius: 0 4px 4px 0;
       }
 
       #error {
@@ -157,15 +151,16 @@ graph TD
     D --> E</textarea
     >
 
-    <div class="format-tabs">
-      <button class="format-tab active" data-format="png">PNG</button>
-      <button class="format-tab" data-format="jpeg">JPEG</button>
-      <button class="format-tab" data-format="svg">SVG</button>
-    </div>
-
     <div class="buttons">
       <button id="render-btn">▶ レンダリング</button>
-      <button id="insert-btn" disabled>↓ Excel に挿入</button>
+      <div class="insert-group">
+        <select id="format-select">
+          <option value="png">PNG</option>
+          <option value="jpeg">JPEG</option>
+          <option value="svg">SVG</option>
+        </select>
+        <button id="insert-btn" disabled>↓ Excel に挿入</button>
+      </div>
     </div>
 
     <div id="error"></div>
