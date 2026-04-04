@@ -89,20 +89,28 @@ Office.onReady(() => {
     try {
       if (selectedFormat === "svg") {
         const svgStr = new XMLSerializer().serializeToString(svgEl);
+        let usedFallback = false;
         await Excel.run(async (ctx) => {
           const sheet = ctx.workbook.worksheets.getActiveWorksheet();
-          if (typeof (sheet.shapes as any).addSvg === "function") {
-            // ExcelApi 1.9 以降
-            (sheet.shapes as any).addSvg(svgStr);
+          const shapes = sheet.shapes as any;
+          if (
+            Office.context.requirements.isSetSupported("ExcelApi", "1.9") &&
+            typeof shapes.addSvg === "function"
+          ) {
+            // ExcelApi 1.9 以降かつ addSvg が実在する場合: SVG ネイティブ挿入
+            shapes.addSvg(svgStr);
           } else {
             // SVG 非対応バージョンは PNG へフォールバック
             const base64 = await svgToBase64Png(svgEl);
             sheet.shapes.addImage(base64);
-            errDiv.textContent =
-              "このバージョンの Excel は SVG 挿入に対応していないため PNG で挿入しました。";
+            usedFallback = true;
           }
           await ctx.sync();
         });
+        if (usedFallback) {
+          errDiv.textContent =
+            "このバージョンの Excel は SVG 挿入に対応していないため PNG で挿入しました。";
+        }
       } else {
         const base64 =
           selectedFormat === "jpeg"
