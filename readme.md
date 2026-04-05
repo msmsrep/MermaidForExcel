@@ -55,3 +55,12 @@ npm start
 
 `assets/icon-{16,32,80}.png` を任意の PNG 画像に置き換えてください。  
 初回ビルド時に 1×1px のプレースホルダーが自動生成されます。
+
+
+## License
+
+This project is licensed under the [MIT License](LICENSE.txt).
+
+### Third-party licenses
+
+This software uses [mermaid](https://github.com/mermaid-js/mermaid) (MIT License).
