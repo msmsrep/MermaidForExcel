@@ -15,10 +15,10 @@ Office.onReady(() => {
     "format-select",
   ) as HTMLSelectElement;
 
-  let selectedFormat: "png" | "jpeg" | "svg" = "png";
+  let selectedFormat: "png" | "jpeg" = "png";
 
   formatSelect.addEventListener("change", () => {
-    selectedFormat = formatSelect.value as "png" | "jpeg" | "svg";
+    selectedFormat = formatSelect.value as "png" | "jpeg";
   });
 
   renderBtn.addEventListener("click", async () => {
@@ -55,12 +55,7 @@ Office.onReady(() => {
     try {
       let dataUrl: string;
       let filename: string;
-      if (selectedFormat === "svg") {
-        const svgStr = new XMLSerializer().serializeToString(svgEl);
-        dataUrl =
-          "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
-        filename = "diagram.svg";
-      } else if (selectedFormat === "jpeg") {
+      if (selectedFormat === "jpeg") {
         const base64 = await svgToBase64Jpeg(svgEl);
         dataUrl = "data:image/jpeg;base64," + base64;
         filename = "diagram.jpg";
@@ -87,41 +82,15 @@ Office.onReady(() => {
     }
 
     try {
-      if (selectedFormat === "svg") {
-        const svgStr = new XMLSerializer().serializeToString(svgEl);
-        let usedFallback = false;
-        await Excel.run(async (ctx) => {
-          const sheet = ctx.workbook.worksheets.getActiveWorksheet();
-          const shapes = sheet.shapes as any;
-          if (
-            Office.context.requirements.isSetSupported("ExcelApi", "1.9") &&
-            typeof shapes.addSvg === "function"
-          ) {
-            // ExcelApi 1.9 以降かつ addSvg が実在する場合: SVG ネイティブ挿入
-            shapes.addSvg(svgStr);
-          } else {
-            // SVG 非対応バージョンは PNG へフォールバック
-            const base64 = await svgToBase64Png(svgEl);
-            sheet.shapes.addImage(base64);
-            usedFallback = true;
-          }
-          await ctx.sync();
-        });
-        if (usedFallback) {
-          errDiv.textContent =
-            "このバージョンの Excel は SVG 挿入に対応していないため PNG で挿入しました。";
-        }
-      } else {
-        const base64 =
-          selectedFormat === "jpeg"
-            ? await svgToBase64Jpeg(svgEl)
-            : await svgToBase64Png(svgEl);
-        await Excel.run(async (ctx) => {
-          const sheet = ctx.workbook.worksheets.getActiveWorksheet();
-          sheet.shapes.addImage(base64);
-          await ctx.sync();
-        });
-      }
+      const base64 =
+        selectedFormat === "jpeg"
+          ? await svgToBase64Jpeg(svgEl)
+          : await svgToBase64Png(svgEl);
+      await Excel.run(async (ctx) => {
+        const sheet = ctx.workbook.worksheets.getActiveWorksheet();
+        sheet.shapes.addImage(base64);
+        await ctx.sync();
+      });
     } catch (e) {
       errDiv.textContent = `挿入エラー: ${e instanceof Error ? e.message : String(e)}`;
     }

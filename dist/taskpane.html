@@ -22,9 +22,10 @@
         color: #323130;
         display: flex;
         flex-direction: column;
-        height: 100dvh;
+        min-height: 100dvh;
         padding: 12px;
         gap: 8px;
+        overflow-y: auto;
       }
 
       h1 {
@@ -57,11 +58,11 @@
 
       button {
         flex: 1;
-        padding: 7px 12px;
+        padding: 2px 4px;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        font-size: 13px;
+        font-size: 8px;
         font-weight: 600;
         transition: background 0.1s;
       }
@@ -96,12 +97,12 @@
       }
 
       #format-select {
-        padding: 7px 8px;
+        padding: 4px 6px;
         border: 1px solid #c7c7c7;
         border-radius: 4px 0 0 4px;
         background: #f3f2f1;
         color: #323130;
-        font-size: 13px;
+        font-size: 8px;
         font-weight: 600;
         cursor: pointer;
         flex-shrink: 0;
@@ -130,7 +131,7 @@
       }
 
       #preview {
-        flex: 1;
+        min-height: 500px;
         overflow: auto;
         border: 1px solid #e1e1e1;
         border-radius: 4px;
@@ -168,7 +169,6 @@ graph TD
         <select id="format-select">
           <option value="png">PNG</option>
           <option value="jpeg">JPEG</option>
-          <option value="svg">SVG</option>
         </select>
         <button id="insert-btn" disabled>↓ Excel に挿入</button>
       </div>
