@@ -8,13 +8,13 @@
 
   <Id>4f7e8c1b-2a3d-4e5f-9071-a2b3c4d5e6f7</Id>
   <Version>1.0.0.0</Version>
-  <ProviderName>MermaidForExcel</ProviderName>
-  <DefaultLocale>ja-JP</DefaultLocale>
+  <ProviderName>msmsrep</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Mermaid for Excel"/>
-  <Description DefaultValue="Mermaid 記法でダイアグラムを作成して Excel に挿入します"/>
+  <Description DefaultValue="Create diagrams using Mermaid syntax and insert them into Excel"/>
   <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-80.png"/>
-  <SupportUrl DefaultValue="https://localhost:3000"/>
+  <SupportUrl DefaultValue="https://github.com/msmsrep/MermaidForExcel/issues"/>
 
   <AppDomains>
     <AppDomain>https://localhost:3000</AppDomain>
@@ -78,17 +78,17 @@
         <bt:Image id="Icon.80x80" DefaultValue="https://localhost:3000/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://go.microsoft.com/fwlink/?LinkId=276812"/>
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://github.com/msmsrep/MermaidForExcel"/>
         <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GetStarted.Title" DefaultValue="Mermaid for Excel を使い始める"/>
-        <bt:String id="GetStarted.Description" DefaultValue="Mermaid 記法でダイアグラムを作成し、Excel に挿入できます"/>
-        <bt:String id="Group.Label" DefaultValue="Mermaid"/>
-        <bt:String id="OpenPane.Label" DefaultValue="Mermaid を開く"/>
+        <bt:String id="GetStarted.Title" DefaultValue="Getting Started with Mermaid for Excel"/>
+        <bt:String id="GetStarted.Description" DefaultValue="Create diagrams using Mermaid syntax and insert them into Excel"/>
+        <bt:String id="Group.Label" DefaultValue="Mermaid For Excel"/>
+        <bt:String id="OpenPane.Label" DefaultValue="Open Mermaid"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="OpenPane.Description" DefaultValue="Mermaid 記法でダイアグラムを描画し、Excel シートに画像として挿入します"/>
+        <bt:String id="OpenPane.Description" DefaultValue="Draw diagrams using Mermaid syntax and insert them as images into Excel sheets"/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

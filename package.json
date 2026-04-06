@@ -1,7 +1,7 @@
 {
   "name": "mermaid-for-excel",
   "version": "1.0.0",
-  "description": "Mermaid ダイアグラムを Excel に挿入する Office アドイン",
+  "description": "Create diagrams using Mermaid syntax and insert them into Excel",
   "scripts": {
     "build": "node build.js",
     "build:dev": "node build.js",
