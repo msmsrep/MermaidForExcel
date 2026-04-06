@@ -1,6 +1,6 @@
 # Mermaid for Excel
 
-[English](./README.md) | [日本語](./README.ja.md)
+<a href="./README.md">English</a> | <a href="./README.ja.md">日本語</a>
 
 An Office Add-in that creates diagrams using Mermaid syntax and inserts them as images into Excel sheets.
 
