@@ -1,61 +1,73 @@
 # Mermaid for Excel
 
-Mermaid 記法でダイアグラムを作成し、Excel のシートに画像として挿入する Office アドイン。  
-ビルドツールは **esbuild** のみを使用したミニマル構成。
+<p align="right">
+  <a href="README.md">English</a> | <a href="README.ja.md">日本語</a>
+</p>
 
-## 構成
+An Office Add-in that creates diagrams using Mermaid syntax and inserts them as images into Excel sheets.
+
+Quickly draw flowcharts, sequence diagrams, ER diagrams, and more using text-based notation, then insert them as PNG/JPEG images into the active sheet. All processing happens locally — your input is never sent to external servers.
+
+### Key Features
+
+- **Real-time preview** — Enter Mermaid syntax and click Render to instantly preview the diagram in the task pane
+- **Insert into Excel** — Insert the previewed image into the active sheet with one click
+- **PNG / JPEG output** — Choose your output format and download the image directly
+- **Wide diagram support** — All diagram types supported by [Mermaid](https://github.com/mermaid-js/mermaid) are available, including flowcharts, sequence diagrams, class diagrams, ER diagrams, and Gantt charts
+- **Privacy-friendly** — All processing is completed within the task pane; no data is sent to external servers
+
+## Project Structure
 
 ```
 MermaidForExcel/
-  build.js                 ← esbuild ビルドスクリプト（serve / watch / build）
-  manifest.xml             ← Office アドインマニフェスト
+  build.js                 ← esbuild build script (serve / watch / build)
+  manifest.xml             ← Office Add-in manifest
   package.json
   tsconfig.json
-  assets/                  ← アイコン置き場（初回ビルド時にプレースホルダーを自動生成）
+  assets/                  ← Icon directory (placeholder icons are auto-generated on first build)
   src/taskpane/
     taskpane.html
     taskpane.ts
-  dist/                    ← ビルド成果物（git 管理外）
+  dist/                    ← Build output (not tracked by git)
 ```
 
-## セットアップ
+## Setup
 
 ```bash
 cd MermaidForExcel
 npm install
 
-# 開発用 HTTPS 証明書のインストール（初回のみ・管理者権限が必要）
+# Install development HTTPS certificate (first time only, requires admin privileges)
 npx office-addin-dev-certs install
 ```
 
-## 開発サーバの起動
+## Starting the Development Server
 
 ```bash
 npm start
 # → https://localhost:3000/taskpane.html
 ```
 
-## Excel へのアドイン登録
+## Registering the Add-in in Excel
 
-1. Excel を起動
-2. **[挿入]** → **[アドイン]** → **[個人用アドイン]** → **[アドインをアップロード]**
-3. `manifest.xml` を選択
+1. Open Excel
+2. **[Insert]** → **[Add-ins]** → **[My Add-ins]** → **[Upload My Add-in]**
+3. Select `dist/manifest.xml`
 
-ホームタブに **[Mermaid を開く]** ボタンが追加されます。
+An **[Open Mermaid]** button will be added to the Home tab.
 
-## スクリプト
+## Scripts
 
-| コマンド | 説明 |
+| Command | Description |
 |---|---|
-| `npm start` | ビルド + HTTPS サーバ起動（ポート 3000） |
-| `npm run build` | `dist/` への一回限りのビルド |
-| `npm run watch` | ファイル変更を監視して自動リビルド |
+| `npm start` | Build + start HTTPS server (port 3000) |
+| `npm run build` | One-time build to `dist/` |
+| `npm run watch` | Watch for file changes and auto-rebuild |
 
-## アイコンの差し替え
+## Replacing Icons
 
-`assets/icon-{16,32,80}.png` を任意の PNG 画像に置き換えてください。  
-初回ビルド時に 1×1px のプレースホルダーが自動生成されます。
-
+Replace `assets/icon-{16,32,80}.png` with your own PNG images.  
+1×1px placeholder icons are auto-generated on the first build.
 
 ## License
 
@@ -64,3 +76,30 @@ This project is licensed under the [MIT License](LICENSE.txt).
 ### Third-party licenses
 
 This software uses [mermaid](https://github.com/mermaid-js/mermaid) (MIT License).
+
+## Privacy Policy
+
+Last updated: April 6, 2026
+
+### Data Collection
+
+Mermaid for Excel does **not** collect any personal information or user data.
+
+### How It Works
+
+- Mermaid syntax text entered by the user is processed **entirely within the task pane** in Excel
+- Diagram rendering is completed locally and no data is sent to external servers
+- Inserting images into Excel sheets is also performed locally via the Microsoft Office JavaScript API
+
+### Access to External Services
+
+This add-in loads its application files (HTML/JavaScript) from a hosting server.  
+No user data is included in this communication.
+
+### Cookies and Tracking
+
+This add-in does not use cookies, local storage, or any tracking technologies.
+
+### Contact
+
+For privacy-related questions, please open a [GitHub Issue](https://github.com/msmsrep/MermaidForExcel/issues).
