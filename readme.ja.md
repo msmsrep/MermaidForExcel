@@ -1,8 +1,6 @@
 # Mermaid for Excel
 
-<p align="right">
-  <a href="README.md">English</a> | <a href="README.ja.md">日本語</a>
-</p>
+[English](README.md) | [日本語](README.ja.md)
 
 Mermaid記法でダイアグラムを作成し、Excelのシートに画像として挿入するOfficeアドインです。
 
