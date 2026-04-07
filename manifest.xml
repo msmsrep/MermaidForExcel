@@ -16,10 +16,6 @@
   <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
   <SupportUrl DefaultValue="https://github.com/msmsrep/MermaidForExcel/issues"/>
 
-  <AppDomains>
-    <AppDomain>https://localhost:3000</AppDomain>
-  </AppDomains>
-
   <Hosts>
     <Host Name="Workbook"/>
   </Hosts>
@@ -34,6 +30,11 @@
     <Hosts>
       <Host xsi:type="Workbook">
         <DesktopFormFactor>
+
+          <AppDomains>
+            <AppDomain>https://localhost:3000</AppDomain>
+          </AppDomains>
+
           <GetStarted>
             <Title resid="GetStarted.Title"/>
             <Description resid="GetStarted.Description"/>
