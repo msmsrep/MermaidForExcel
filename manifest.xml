@@ -30,11 +30,6 @@
     <Hosts>
       <Host xsi:type="Workbook">
         <DesktopFormFactor>
-
-          <AppDomains>
-            <AppDomain>https://localhost:3000</AppDomain>
-          </AppDomains>
-
           <GetStarted>
             <Title resid="GetStarted.Title"/>
             <Description resid="GetStarted.Description"/>
@@ -73,6 +68,10 @@
         </DesktopFormFactor>
       </Host>
     </Hosts>
+
+    <AppDomains>
+      <AppDomain>https://localhost:3000</AppDomain>
+    </AppDomains>
 
     <Resources>
       <bt:Images>
