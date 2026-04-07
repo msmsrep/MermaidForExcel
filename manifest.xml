@@ -69,10 +69,6 @@
       </Host>
     </Hosts>
 
-    <AppDomains>
-      <AppDomain>https://localhost:3000</AppDomain>
-    </AppDomains>
-
     <Resources>
       <bt:Images>
         <bt:Image id="Icon.16x16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>

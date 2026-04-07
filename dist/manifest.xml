@@ -69,10 +69,6 @@
       </Host>
     </Hosts>
 
-    <AppDomains>
-      <AppDomain>https://msmsrep.github.io/MermaidForExcel/dist</AppDomain>
-    </AppDomains>
-
     <Resources>
       <bt:Images>
         <bt:Image id="Icon.16x16" DefaultValue="https://msmsrep.github.io/MermaidForExcel/dist/assets/icon-16.png"/>
