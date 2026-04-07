@@ -17,7 +17,7 @@
   <SupportUrl DefaultValue="https://github.com/msmsrep/MermaidForExcel/issues"/>
 
   <AppDomains>
-    <AppDomain>https://msmsrep.github.io/MermaidForExcel/</AppDomain>
+    <AppDomain>https://msmsrep.github.io/</AppDomain>
   </AppDomains>
 
   <Hosts>
