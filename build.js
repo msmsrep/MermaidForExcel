@@ -24,7 +24,7 @@ const PLACEHOLDER_PNG = Buffer.from(
 function ensureIcons() {
   const dir = path.join(ROOT, "assets");
   fs.mkdirSync(dir, { recursive: true });
-  for (const size of [16, 32, 80]) {
+  for (const size of [16, 32, 64, 80]) {
     const file = path.join(dir, `icon-${size}.png`);
     if (!fs.existsSync(file)) {
       fs.writeFileSync(file, PLACEHOLDER_PNG);
