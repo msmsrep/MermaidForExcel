@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
@@ -158,29 +158,29 @@
 
     <textarea id="mermaid-input" spellcheck="false">
 graph TD
-    A[開始] --> B{条件分岐}
-    B -->|Yes| C[処理A]
-    B -->|No| D[処理B]
-    C --> E[終了]
+    A[Start] --> B{Condition}
+    B -->|Yes| C[Process A]
+    B -->|No| D[Process B]
+    C --> E[End]
     D --> E</textarea
     >
 
     <div class="buttons">
-      <button id="render-btn">▶レンダリング</button>
+      <button id="render-btn">Render</button>
       <div class="insert-group">
         <select id="format-select">
           <option value="png">PNG</option>
           <option value="jpeg">JPEG</option>
         </select>
-        <button id="insert-btn" disabled>Excel に挿入</button>
+        <button id="insert-btn" disabled>Insert to Excel</button>
       </div>
-      <button id="download-btn" disabled>⬇ダウンロード</button>
+      <button id="download-btn" disabled>Download</button>
     </div>
 
     <div id="error"></div>
 
     <div id="preview">
-      <span class="hint">← レンダリングボタンを押してください</span>
+      <span class="hint">Press the Render button</span>
     </div>
 
     <script src="taskpane.js"></script>

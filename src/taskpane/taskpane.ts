@@ -29,7 +29,7 @@ Office.onReady(() => {
     if (!code) return;
 
     try {
-      // 同一 ID が残っているとエラーになるため削除
+      // Remove element with the same ID to avoid errors
       document.getElementById("mermaid-graph")?.remove();
 
       const { svg } = await mermaid.render("mermaid-graph", code);
@@ -40,7 +40,7 @@ Office.onReady(() => {
       preview.innerHTML = "";
       insertBtn.disabled = true;
       downloadBtn.disabled = true;
-      errDiv.textContent = `レンダリングエラー: ${e instanceof Error ? e.message : String(e)}`;
+      errDiv.textContent = `Render error: ${e instanceof Error ? e.message : String(e)}`;
     }
   });
 
@@ -48,7 +48,7 @@ Office.onReady(() => {
     errDiv.textContent = "";
     const svgEl = preview.querySelector<SVGSVGElement>("svg");
     if (!svgEl) {
-      errDiv.textContent = "先にレンダリングしてください";
+      errDiv.textContent = "Please render first";
       return;
     }
 
@@ -69,7 +69,7 @@ Office.onReady(() => {
       a.download = filename;
       a.click();
     } catch (e) {
-      errDiv.textContent = `ダウンロードエラー: ${e instanceof Error ? e.message : String(e)}`;
+      errDiv.textContent = `Download error: ${e instanceof Error ? e.message : String(e)}`;
     }
   });
 
@@ -77,7 +77,7 @@ Office.onReady(() => {
     errDiv.textContent = "";
     const svgEl = preview.querySelector<SVGSVGElement>("svg");
     if (!svgEl) {
-      errDiv.textContent = "先にレンダリングしてください";
+      errDiv.textContent = "Please render first";
       return;
     }
 
@@ -92,14 +92,14 @@ Office.onReady(() => {
         await ctx.sync();
       });
     } catch (e) {
-      errDiv.textContent = `挿入エラー: ${e instanceof Error ? e.message : String(e)}`;
+      errDiv.textContent = `Insert error: ${e instanceof Error ? e.message : String(e)}`;
     }
   });
 });
 
 /**
- * SVG 要素を PNG の base64 文字列（data: プレフィックスなし）に変換する。
- * Canvas を経由することで Excel の addImage API が要求する PNG フォーマットに対応する。
+ * Converts an SVG element to a base64 PNG string (without data: prefix).
+ * Uses Canvas to produce the PNG format required by Excel's addImage API.
  */
 async function svgToBase64Png(svgEl: SVGSVGElement): Promise<string> {
   const svgStr = new XMLSerializer().serializeToString(svgEl);
@@ -125,7 +125,7 @@ async function svgToBase64Png(svgEl: SVGSVGElement): Promise<string> {
 }
 
 /**
- * SVG 要素を JPEG の base64 文字列（data: プレフィックスなし）に変換する。
+ * Converts an SVG element to a base64 JPEG string (without data: prefix).
  */
 async function svgToBase64Jpeg(
   svgEl: SVGSVGElement,
@@ -149,7 +149,7 @@ async function svgToBase64Jpeg(
   canvas.width = w;
   canvas.height = h;
   const ctx2d = canvas.getContext("2d")!;
-  // JPEG は透過をサポートしないため白背景で塗りつぶす
+  // Fill with white background since JPEG does not support transparency
   ctx2d.fillStyle = "#ffffff";
   ctx2d.fillRect(0, 0, w, h);
   ctx2d.drawImage(img, 0, 0, w, h);
