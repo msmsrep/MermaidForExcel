@@ -22,11 +22,11 @@ MermaidForExcel/
   manifest.xml             ← Office Add-in manifest
   package.json
   tsconfig.json
-  assets/                  ← Icon directory (placeholder icons are auto-generated on first build)
+  assets/                  ← Icon directory
   src/taskpane/
     taskpane.html
     taskpane.ts
-  dist/                    ← Build output (not tracked by git)
+  dist/                    ← Build output
 ```
 
 ## Setup
@@ -65,7 +65,6 @@ An **[Open Mermaid]** button will be added to the Home tab.
 ## Replacing Icons
 
 Replace `assets/icon-{16,32,80}.png` with your own PNG images.  
-1×1px placeholder icons are auto-generated on the first build.
 
 ## License
 
