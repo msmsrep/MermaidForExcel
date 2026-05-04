@@ -34,6 +34,12 @@
         color: #0078d4;
       }
 
+      .field-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #323130;
+      }
+
       textarea {
         width: 100%;
         height: 100px;
@@ -156,8 +162,9 @@
   <body>
     <h1>Mermaid for Excel</h1>
 
-    <textarea id="mermaid-input" spellcheck="false">
-graph TD
+    <label class="field-label" for="mermaid-input"></label>
+    <textarea id="mermaid-input" spellcheck="false" placeholder="graph TD&#10;A-->B">
+graph LR
     A[Start] --> B{Condition}
     B -->|Yes| C[Process A]
     B -->|No| D[Process B]
@@ -168,9 +175,10 @@ graph TD
     <div class="buttons">
       <button id="render-btn">Render</button>
       <div class="insert-group">
-        <select id="format-select">
+        <select id="format-select" aria-label="Image format">
           <option value="png">PNG</option>
           <option value="jpeg">JPEG</option>
+          <option value="svg">SVG</option>
         </select>
         <button id="insert-btn" disabled>Insert to Excel</button>
       </div>
