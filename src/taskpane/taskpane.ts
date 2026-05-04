@@ -149,6 +149,15 @@ Office.onReady(() => {
   void renderPreview();
   void loadSheetSvgItems();
 
+  // Reset dropdown when the active sheet changes.
+  Excel.run(async (ctx) => {
+    ctx.workbook.worksheets.onActivated.add(() => {
+      updateSheetSvgOptions([], "");
+      return Promise.resolve();
+    });
+    await ctx.sync();
+  }).catch(() => {/* ignore */});
+
   async function applyInsertedShapeMetadata(
     mermaidCode: string,
     position?: { left: number; top: number },
