@@ -105,7 +105,13 @@ Office.onReady(() => {
             : await svgToBase64Png(svgEl);
         await Excel.run(async (ctx) => {
           const sheet = ctx.workbook.worksheets.getActiveWorksheet();
-          sheet.shapes.addImage(base64);
+          const activeCell = ctx.workbook.getActiveCell();
+          activeCell.load(["left", "top"]);
+          await ctx.sync();
+
+          const shape = sheet.shapes.addImage(base64);
+          shape.left = activeCell.left;
+          shape.top = activeCell.top;
           await ctx.sync();
         });
       }
