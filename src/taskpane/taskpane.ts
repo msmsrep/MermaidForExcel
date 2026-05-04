@@ -1,7 +1,16 @@
 import mermaid from "mermaid";
 
+// https://github.com/mermaid-js/mermaid-cli/issues/112
 Office.onReady(() => {
-  mermaid.initialize({ startOnLoad: false, theme: "default" });
+    mermaid.initialize({
+    startOnLoad: false,
+    theme: "default",
+    htmlLabels: false,
+    flowchart: {
+      useMaxWidth: false,
+      htmlLabels: false,
+    },
+  });
 
   const input = document.getElementById("mermaid-input") as HTMLTextAreaElement;
   const preview = document.getElementById("preview") as HTMLDivElement;
@@ -15,10 +24,10 @@ Office.onReady(() => {
     "format-select",
   ) as HTMLSelectElement;
 
-  let selectedFormat: "png" | "jpeg" = "png";
+  let selectedFormat: "png" | "jpeg" | "svg" = "png";
 
   formatSelect.addEventListener("change", () => {
-    selectedFormat = formatSelect.value as "png" | "jpeg";
+    selectedFormat = formatSelect.value as "png" | "jpeg" | "svg";
   });
 
   renderBtn.addEventListener("click", async () => {
@@ -59,6 +68,10 @@ Office.onReady(() => {
         const base64 = await svgToBase64Jpeg(svgEl);
         dataUrl = "data:image/jpeg;base64," + base64;
         filename = "diagram.jpg";
+      } else if (selectedFormat === "svg") {
+        const svgStr = new XMLSerializer().serializeToString(svgEl);
+        dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+        filename = "diagram.svg";
       } else {
         const base64 = await svgToBase64Png(svgEl);
         dataUrl = "data:image/png;base64," + base64;
@@ -82,20 +95,41 @@ Office.onReady(() => {
     }
 
     try {
-      const base64 =
-        selectedFormat === "jpeg"
-          ? await svgToBase64Jpeg(svgEl)
-          : await svgToBase64Png(svgEl);
-      await Excel.run(async (ctx) => {
-        const sheet = ctx.workbook.worksheets.getActiveWorksheet();
-        sheet.shapes.addImage(base64);
-        await ctx.sync();
-      });
+      if (selectedFormat === "svg") {
+        const svgStr = new XMLSerializer().serializeToString(svgEl);
+        await insertSvgToSelection(svgStr);
+      } else {
+        const base64 =
+          selectedFormat === "jpeg"
+            ? await svgToBase64Jpeg(svgEl)
+            : await svgToBase64Png(svgEl);
+        await Excel.run(async (ctx) => {
+          const sheet = ctx.workbook.worksheets.getActiveWorksheet();
+          sheet.shapes.addImage(base64);
+          await ctx.sync();
+        });
+      }
     } catch (e) {
       errDiv.textContent = `Insert error: ${e instanceof Error ? e.message : String(e)}`;
     }
   });
 });
+
+function insertSvgToSelection(svgStr: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    Office.context.document.setSelectedDataAsync(
+      svgStr,
+      { coercionType: Office.CoercionType.XmlSvg },
+      (asyncResult) => {
+        if (asyncResult.status === Office.AsyncResultStatus.Failed) {
+          reject(new Error(asyncResult.error.message));
+        } else {
+          resolve();
+        }
+      },
+    );
+  });
+}
 
 /**
  * Converts an SVG element to a base64 PNG string (without data: prefix).
