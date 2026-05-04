@@ -116,9 +116,21 @@ Office.onReady(() => {
     }
 
     try {
+      const mermaidCode = input.value.trim();
       if (selectedFormat === "svg") {
         const svgStr = new XMLSerializer().serializeToString(svgEl);
         await insertSvgToSelection(svgStr);
+        // Set alt text on the newly inserted shape (last item in collection)
+        await Excel.run(async (ctx) => {
+          const shapes = ctx.workbook.worksheets.getActiveWorksheet().shapes;
+          const countResult = shapes.getCount();
+          await ctx.sync();
+          if (countResult.value > 0) {
+            const lastShape = shapes.getItemAt(countResult.value - 1);
+            lastShape.altTextDescription = mermaidCode;
+            await ctx.sync();
+          }
+        });
       } else {
         const base64 =
           selectedFormat === "jpeg"
@@ -133,6 +145,8 @@ Office.onReady(() => {
           const shape = sheet.shapes.addImage(base64);
           shape.left = activeCell.left;
           shape.top = activeCell.top;
+          shape.altTextTitle = "Mermaid Diagram";
+          shape.altTextDescription = mermaidCode;
           await ctx.sync();
         });
       }
