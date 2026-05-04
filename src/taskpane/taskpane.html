@@ -40,6 +40,20 @@
         color: #323130;
       }
 
+      #sheet-svg-select {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #c7c7c7;
+        border-radius: 4px;
+        background: #fff;
+        color: #323130;
+        font-size: 12px;
+      }
+      #sheet-svg-select:focus {
+        outline: none;
+        border-color: #0078d4;
+      }
+
       textarea {
         width: 100%;
         height: 100px;
@@ -71,13 +85,6 @@
         font-size: 8px;
         font-weight: 600;
         transition: background 0.1s;
-      }
-      #render-btn {
-        background: #0078d4;
-        color: #fff;
-      }
-      #render-btn:hover {
-        background: #005a9e;
       }
       #insert-btn {
         background: #107c10;
@@ -162,6 +169,11 @@
   <body>
     <h1>Mermaid for Excel</h1>
 
+    <label class="field-label" for="sheet-svg-select">Sheet SVG</label>
+    <select id="sheet-svg-select" aria-label="Select SVG in active sheet">
+      <option value="">(No SVG selected)</option>
+    </select>
+
     <label class="field-label" for="mermaid-input"></label>
     <textarea id="mermaid-input" spellcheck="false" placeholder="graph TD&#10;A-->B">
 graph LR
@@ -173,7 +185,6 @@ graph LR
     >
 
     <div class="buttons">
-      <button id="render-btn">Render</button>
       <div class="insert-group">
         <select id="format-select" aria-label="Image format">
           <option value="png">PNG</option>
@@ -188,7 +199,7 @@ graph LR
     <div id="error"></div>
 
     <div id="preview">
-      <span class="hint">Press the Render button</span>
+      <span class="hint">Type Mermaid code</span>
     </div>
 
     <script src="taskpane.js"></script>
