@@ -15,7 +15,6 @@ Office.onReady(() => {
   const input = document.getElementById("mermaid-input") as HTMLTextAreaElement;
   const preview = document.getElementById("preview") as HTMLDivElement;
   const errDiv = document.getElementById("error") as HTMLDivElement;
-  const renderBtn = document.getElementById("render-btn") as HTMLButtonElement;
   const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
   const downloadBtn = document.getElementById(
     "download-btn",
@@ -23,6 +22,9 @@ Office.onReady(() => {
   const formatSelect = document.getElementById(
     "format-select",
   ) as HTMLSelectElement;
+  const previewHintHtml = '<span class="hint">Type Mermaid code</span>';
+  let renderDebounceTimer: number | undefined;
+  let renderRequestId = 0;
 
   let selectedFormat: "png" | "jpeg" | "svg" = "png";
 
@@ -30,28 +32,47 @@ Office.onReady(() => {
     selectedFormat = formatSelect.value as "png" | "jpeg" | "svg";
   });
 
-  renderBtn.addEventListener("click", async () => {
+  async function renderPreview() {
+    const requestId = ++renderRequestId;
     errDiv.textContent = "";
     insertBtn.disabled = true;
+    downloadBtn.disabled = true;
 
     const code = input.value.trim();
-    if (!code) return;
+    if (!code) {
+      preview.innerHTML = previewHintHtml;
+      return;
+    }
 
     try {
       // Remove element with the same ID to avoid errors
       document.getElementById("mermaid-graph")?.remove();
 
       const { svg } = await mermaid.render("mermaid-graph", code);
+      if (requestId !== renderRequestId) return;
       preview.innerHTML = svg;
       insertBtn.disabled = false;
       downloadBtn.disabled = false;
     } catch (e) {
+      if (requestId !== renderRequestId) return;
       preview.innerHTML = "";
       insertBtn.disabled = true;
       downloadBtn.disabled = true;
       errDiv.textContent = `Render error: ${e instanceof Error ? e.message : String(e)}`;
     }
+  }
+
+  input.addEventListener("input", () => {
+    if (renderDebounceTimer !== undefined) {
+      window.clearTimeout(renderDebounceTimer);
+    }
+    renderDebounceTimer = window.setTimeout(() => {
+      void renderPreview();
+    }, 250);
   });
+
+  // Render initial Mermaid code when the task pane opens.
+  void renderPreview();
 
   downloadBtn.addEventListener("click", async () => {
     errDiv.textContent = "";

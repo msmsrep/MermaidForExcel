@@ -72,13 +72,6 @@
         font-weight: 600;
         transition: background 0.1s;
       }
-      #render-btn {
-        background: #0078d4;
-        color: #fff;
-      }
-      #render-btn:hover {
-        background: #005a9e;
-      }
       #insert-btn {
         background: #107c10;
         color: #fff;
@@ -173,7 +166,6 @@ graph LR
     >
 
     <div class="buttons">
-      <button id="render-btn">Render</button>
       <div class="insert-group">
         <select id="format-select" aria-label="Image format">
           <option value="png">PNG</option>
@@ -188,7 +180,7 @@ graph LR
     <div id="error"></div>
 
     <div id="preview">
-      <span class="hint">Press the Render button</span>
+      <span class="hint">Type Mermaid code</span>
     </div>
 
     <script src="taskpane.js"></script>
