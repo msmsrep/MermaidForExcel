@@ -6,6 +6,7 @@
 #define MyAppPublisher "My Company, Inc."
 #define MyAppURL "https://www.example.com/"
 #define MyAppExeName "manifest.xml"
+#define MyShareName "MermaidForExcel"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
@@ -26,8 +27,12 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 ; プログラムフォルダ
 ; DefaultDirName={autopf}\App\{#MyAppName}
+
 ; マイドキュメント
-DefaultDirName={userdocs}\App\OfficeAddIns\Excel\{#MyAppName}
+; userdocsはonedriveフォルダにリダイレクトされる
+; DefaultDirName={userdocs}\App\OfficeAddIns\Excel\{#MyAppName}
+DefaultDirName=C:\Users\{username}\Documents\OfficeAddIns\Excel\MermaidForExcel
+
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run
 ; on anything but x64 and Windows 11 on Arm.
@@ -40,7 +45,10 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
 DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
-PrivilegesRequired=none
+; SMB 共有の作成には管理者権限が必要
+PrivilegesRequired=admin
+; HKCU への登録は意図的（Office の TrustedCatalogs はユーザー単位）
+UsedUserAreasWarning=no
 OutputDir=.
 OutputBaseFilename={#MyAppName}Setup
 ; SetupIconFile={#MyAppPath}logo_red.ico
@@ -71,7 +79,7 @@ Source: "{#MyAppPath}{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; ValueType: string; ValueName: "Id"; ValueData: "{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"
-Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; ValueType: string; ValueName: "Url"; ValueData: "\\\\{computername}\\Users\\{username}\\Documents\\App\\OfficeAddIns\\Excel\\MermaidForExcel"
+Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; ValueType: string; ValueName: "Url"; ValueData: "\\\\{computername}\\{#MyShareName}"
 Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; ValueType: dword; ValueName: "Flags"; ValueData: 1
 
 [Icons]
@@ -80,19 +88,55 @@ Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7d
 ; Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: startupicon
 
 [Run]
-; COMの登録
-; Filename: "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe"; Parameters: """{app}\OutlookAttachmentChecker.dll"" /codebase"; Flags: runhidden
-; Outlook を終了（強制終了）
-; Filename: "taskkill.exe"; Parameters: "/IM outlook.exe /F"; Flags: runhidden
-; Outlook を再起動
-; Filename: "{autopf}\Microsoft Office\root\Office16\OUTLOOK.EXE"; Flags: shellexec postinstall
-; 既定のブラウザでreadmeを開く
-; Filename: "{app}\Package\readme.html"; Flags: shellexec postinstall
 
 [UninstallRun]
-; Outlook を終了（強制終了）
-; Filename: "taskkill.exe"; Parameters: "/IM outlook.exe /F"; Flags: runhidden; RunOnceId: "KillOutlook"
-; COMの登録解除
-; Filename: "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\RegAsm.exe"; Parameters: """{app}\OutlookAttachmentChecker.dll"" /u"; Flags: runhidden; RunOnceId: "Unreg_OutlookAttachmentChecker"
-; Outlook を再起動
-; Filename: "{autopf}\Microsoft Office\root\Office16\OUTLOOK.EXE"; Flags: shellexec; RunOnceId: "RestartOutlook"
+
+
+[Code]
+function ExecNetShare(const Params: string): Boolean;
+var
+	ResultCode: Integer;
+begin
+	Result := Exec(
+		ExpandConstant('{cmd}'),
+		'/C net share ' + ExpandConstant(Params),
+		'',
+		SW_HIDE,
+		ewWaitUntilTerminated,
+		ResultCode
+	) and (ResultCode = 0);
+end;
+
+procedure EnsureCatalogShare;
+begin
+	{ 既に共有が存在する場合は作成をスキップ }
+	if ExecNetShare('{#MyShareName}') then
+		Exit;
+
+	if not ExecNetShare('{#MyShareName}="{app}"') then
+	begin
+		MsgBox(
+			'共有フォルダ "{#MyShareName}" の作成に失敗しました。' + #13#10 +
+			'管理者権限でセットアップを実行してください。',
+			mbError,
+			MB_OK
+		);
+	end;
+end;
+
+procedure RemoveCatalogShare;
+begin
+	ExecNetShare('{#MyShareName} /delete /y');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+	if CurStep = ssPostInstall then
+		EnsureCatalogShare;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+	if CurUninstallStep = usUninstall then
+		RemoveCatalogShare;
+end;
