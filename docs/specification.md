@@ -1,6 +1,6 @@
 # Mermaid for Excel 仕様書
 
-本書は現行実装（`src/taskpane/taskpane.ts`, `src/taskpane/taskpane.html`, `manifest.xml`, `build.js`, `Installer/MermaidForExcel.iss`）から起こした仕様書である。記述は実装の挙動を正とする。
+本書は現行実装（`src/taskpane/*.ts`, `src/taskpane/taskpane.html`, `src/taskpane/taskpane.css`, `manifest.xml`, `build.js`, `Installer/MermaidForExcel.iss`）から起こした仕様書である。記述は実装の挙動を正とする。
 
 - 対象バージョン: 1.0.0（`package.json` / マニフェスト `1.0.0.0`）
 - 作成日: 2026-10-21
@@ -207,28 +207,30 @@ Cookie、localStorage、外部送信は使用しない。
 | `npm run build` | `node build.js` | 本番ビルド。マニフェストの URL を本番 URL に置換して `dist/` に出力 |
 | `npm run build:dev` | `node build.js dev` | 開発ビルド。マニフェストの URL は `https://localhost:3000` |
 | `npm run watch` | `node build.js watch` | ファイル監視ビルド（インラインソースマップ、開発 URL） |
-| `npm run dev-server` | `node build.js serve` | esbuild の HTTP サーバを HTTPS プロキシ（ポート 3000）で公開 |
+| `npm run dev-server` | `node build.js serve` | esbuild の HTTPS サーバ（ポート 3000）で `dist/` を配信 |
+| `npm run typecheck` | `tsc` | 型チェック |
+| `npm version <patch\|minor\|major>` | — | `package.json` を更新し、`scripts/sync-version.js` でマニフェストと `.iss` のバージョン（4 桁）に反映 |
 | `npm start` | `office-addin-debugging start manifest.xml` | Office へのサイドロード＋デバッグ起動 |
 | `npm stop` | `office-addin-debugging stop manifest.xml` | デバッグ停止 |
 
 ### 6.2 build.js の処理
 
-1. `assets/icon-{16,32,64,80}.png` が無ければ 1×1 のプレースホルダー PNG を生成する。
-2. `taskpane.html` と `assets/` 配下を `dist/` にコピーする。
-3. `manifest.xml` 内の `https://localhost:3000` をモードに応じた URL に置換して `dist/manifest.xml` に出力する。
+1. `taskpane.html`、`taskpane.css` と `assets/` 配下を `dist/` にコピーする。
+2. `manifest.xml` 内の `https://localhost:3000` をモードに応じた URL に置換して `dist/manifest.xml` に出力する。
 
    | モード | ベース URL |
    |---|---|
    | `build` | `https://msmsrep.github.io/MermaidForExcel/dist` |
    | `dev` / `watch` / `serve` | `https://localhost:3000` |
 
-4. esbuild で `src/taskpane/taskpane.ts` を `dist/taskpane.js` にバンドルする（IIFE、ターゲット ES2017、ソースマップあり）。
-5. `serve` では `office-addin-dev-certs` の証明書で HTTPS サーバを起動する。証明書が無い場合はエラーメッセージを出して終了する。
+3. esbuild で `src/taskpane/taskpane.ts` を `dist/taskpane.js` にバンドルする（IIFE、ターゲット ES2017、ソースマップあり）。
+4. `serve` では `office-addin-dev-certs` の証明書で esbuild の HTTPS サーバを起動する。証明書が無い場合はエラーメッセージを出して終了する。
+5. 未知のモードを指定した場合はエラー終了する。
 
 ### 6.3 配布
 
-- 本番資産は GitHub Pages（`https://msmsrep.github.io/MermaidForExcel/dist/`）でホストする。`dist/` はリポジトリにコミットする。
-- コミット前は `npm run build`（本番 URL）で `dist/` を生成すること。
+- 本番資産は GitHub Pages（`https://msmsrep.github.io/MermaidForExcel/dist/`）でホストする。
+- `main` への push 時に GitHub Actions（`.github/workflows/pages.yml`）が型チェック・本番ビルドを行い、`dist/` を `/dist/` 配下としてデプロイする。`dist/` はリポジトリにコミットしない。
 
 ---
 
@@ -243,7 +245,7 @@ Cookie、localStorage、外部送信は使用しない。
 | 対応アーキテクチャ | x64 互換 |
 | 言語 | 日本語 |
 | 発行元 / URL | `msmsrep` / `https://github.com/msmsrep/MermaidForExcel` |
-| 配置ファイル | `dist/manifest.xml` のみ |
+| 配置ファイル | `dist/manifest.xml` のみ（コンパイル前に `npm run build` が必要） |
 | 配置先 | `%USERPROFILE%\Documents\OfficeAddIns\Excel\MermaidForExcel`（`{userdocs}` は OneDrive にリダイレクトされるため使わない） |
 
 **インストール時**:
@@ -268,4 +270,3 @@ Cookie、localStorage、外部送信は使用しない。
 
 1. **SVG 挿入の一時的な位置**: SVG は Excel の選択範囲に挿入された後で目的の位置へ移動する。
 2. **同名の既存共有**: 共有 `MermaidForExcel` が別のフォルダを指して既に存在する場合、インストーラは作り直さない。
-3. **型チェック**: `npx tsc` で `node_modules`（type-fest）の型定義エラーが 3 件出る。`src` 側のエラーではない（`skipLibCheck` 未設定のため）。

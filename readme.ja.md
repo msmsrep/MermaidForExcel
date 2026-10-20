@@ -26,10 +26,15 @@ MermaidForExcel/
   package.json
   tsconfig.json
   assets/                  ← アイコン置き場
+  scripts/sync-version.js  ← package.json のバージョンをマニフェストとインストーラに反映
   src/taskpane/
-    taskpane.html
-    taskpane.ts
-  dist/                    ← ビルド成果物
+    taskpane.html / .css
+    taskpane.ts            ← UI の結線（エントリポイント）
+    render.ts              ← Mermaid のレンダリング
+    image.ts               ← SVG → PNG/JPEG 変換
+    excelShapes.ts         ← Excel 図形の挿入・差し替え・一覧取得
+    splitter.ts            ← 入力欄とプレビューのスプリッタ
+  dist/                    ← ビルド成果物（コミットしない。GitHub Actions でデプロイ）
 ```
 
 ## セットアップ
@@ -69,6 +74,8 @@ npm run dev-server
 | `npm run build` | `dist/` への一回限りのビルド（本番 URL のマニフェスト） |
 | `npm run build:dev` | `dist/` への一回限りのビルド（`https://localhost:3000` のマニフェスト） |
 | `npm run watch` | ファイル変更を監視して自動リビルド |
+| `npm run typecheck` | `tsc` で型チェック |
+| `npm version <patch\|minor\|major>` | バージョンを上げて `manifest.xml` とインストーラに反映 |
 
 ## アイコンの差し替え
 

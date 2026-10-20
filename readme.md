@@ -24,10 +24,15 @@ MermaidForExcel/
   package.json
   tsconfig.json
   assets/                  ← Icon directory
+  scripts/sync-version.js  ← Syncs the package.json version to the manifest and installer
   src/taskpane/
-    taskpane.html
-    taskpane.ts
-  dist/                    ← Build output
+    taskpane.html / .css
+    taskpane.ts            ← UI wiring (entry point)
+    render.ts              ← Mermaid rendering
+    image.ts               ← SVG → PNG/JPEG conversion
+    excelShapes.ts         ← Excel shape insert / replace / list
+    splitter.ts            ← Editor / preview splitter
+  dist/                    ← Build output (not committed; deployed by GitHub Actions)
 ```
 
 ## Setup
@@ -67,6 +72,8 @@ An **[Open Mermaid]** button will be added to the Home tab.
 | `npm run build` | One-time build to `dist/` (manifest with production URLs) |
 | `npm run build:dev` | One-time build to `dist/` (manifest with `https://localhost:3000`) |
 | `npm run watch` | Watch for file changes and auto-rebuild |
+| `npm run typecheck` | Type-check with `tsc` |
+| `npm version <patch\|minor\|major>` | Bump the version and sync it to `manifest.xml` and the installer |
 
 ## Replacing Icons
 
