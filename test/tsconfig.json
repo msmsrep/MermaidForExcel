@@ -1,6 +1,11 @@
 {
     "extends": "../tsconfig.json",
     "compilerOptions": {
+        // Tests run on Node, so they may use newer library APIs than the task pane.
+        "lib": [
+            "ES2022",
+            "DOM"
+        ],
         "types": [
             "office-js",
             "node"
