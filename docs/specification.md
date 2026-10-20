@@ -1,6 +1,6 @@
 # Mermaid for Excel 仕様書
 
-本書は現行実装（`src/taskpane/*.ts`, `src/taskpane/taskpane.html`, `src/taskpane/taskpane.css`, `manifest.xml`, `build.js`, `Installer/MermaidForExcel.iss`）から起こした仕様書である。記述は実装の挙動を正とする。
+本書は現行実装（`src/taskpane/*.ts`, `src/taskpane/taskpane.html`, `src/taskpane/taskpane.css`, `manifest.xml`, `build.js`, `Installer/MermaidForExcel.iss`）から起こした仕様書である。記述は実装の挙動を正とする。主要な挙動は `test/` の自動テストで検証している（§6.4）。
 
 - 対象バージョン: 1.0.0（`package.json` / マニフェスト `1.0.0.0`）
 - 作成日: 2026-10-21
@@ -208,7 +208,9 @@ Cookie、localStorage、外部送信は使用しない。
 | `npm run build:dev` | `node build.js dev` | 開発ビルド。マニフェストの URL は `https://localhost:3000` |
 | `npm run watch` | `node build.js watch` | ファイル監視ビルド（インラインソースマップ、開発 URL） |
 | `npm run dev-server` | `node build.js serve` | esbuild の HTTPS サーバ（ポート 3000）で `dist/` を配信 |
-| `npm run typecheck` | `tsc` | 型チェック |
+| `npm run typecheck` | `tsc && tsc -p test` | ソースとテストの型チェック |
+| `npm test` | `vitest run` | テスト実行（§6.4） |
+| `npm run test:watch` | `vitest` | テストの監視実行 |
 | `npm version <patch\|minor\|major>` | — | `package.json` を更新し、`scripts/sync-version.js` でマニフェストと `.iss` のバージョン（4 桁）に反映 |
 | `npm start` | `office-addin-debugging start manifest.xml` | Office へのサイドロード＋デバッグ起動 |
 | `npm stop` | `office-addin-debugging stop manifest.xml` | デバッグ停止 |
@@ -230,7 +232,23 @@ Cookie、localStorage、外部送信は使用しない。
 ### 6.3 配布
 
 - 本番資産は GitHub Pages（`https://msmsrep.github.io/MermaidForExcel/dist/`）でホストする。
-- `main` への push 時に GitHub Actions（`.github/workflows/pages.yml`）が型チェック・本番ビルドを行い、`dist/` を `/dist/` 配下としてデプロイする。`dist/` はリポジトリにコミットしない。
+- `main` への push 時に GitHub Actions（`.github/workflows/pages.yml`）が型チェック・テスト・本番ビルドを行い、`dist/` を `/dist/` 配下としてデプロイする。`dist/` はリポジトリにコミットしない。
+
+### 6.4 テスト
+
+Vitest（jsdom 環境）で `test/*.test.ts` を実行する。設定は `vitest.config.mts`、型チェックは `test/tsconfig.json`。
+
+| テスト | 対象 | 方法 |
+|---|---|---|
+| `util.test.ts` | `util.ts` | そのまま実行 |
+| `excelShapes.test.ts` | §4.3 / §4.4 の Excel 操作 | `Excel` / `Office` グローバルをフェイク（`test/fakes/office.ts`）に差し替え |
+| `image.test.ts` | §4.6 | `Image` と Canvas をモック |
+| `render.test.ts` | §4.1 / §4.2 の mermaid 呼び出し | `mermaid` をモック |
+| `splitter.test.ts` | §4.7 | 要素の `offsetHeight` をスタブ |
+| `taskpane.test.ts` | §3〜§4.5 の UI 動作 | `taskpane.html` を読み込み、Excel 操作・描画・画像化をモック |
+| `scripts.test.ts` | §6.1 のバージョン反映、§6.2 | 一時ディレクトリにコピーしたプロジェクトで実行（Node 環境） |
+
+mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）、`watch` / `serve` モード、Excel 上での動作は自動テストの対象外。
 
 ---
 

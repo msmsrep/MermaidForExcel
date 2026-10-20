@@ -7,17 +7,22 @@
     "build:dev": "node build.js dev",
     "watch": "node build.js watch",
     "dev-server": "node build.js serve",
-    "typecheck": "tsc",
+    "typecheck": "tsc && tsc -p test",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "version": "node scripts/sync-version.js && git add manifest.xml Installer/MermaidForExcel.iss",
     "start": "office-addin-debugging start manifest.xml",
     "stop": "office-addin-debugging stop manifest.xml"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "@types/office-js": "^1.0.536",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.1.3",
     "office-addin-debugging": "^6.0.6",
     "office-addin-dev-certs": "^1.12.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "mermaid": "^11.0.0"
