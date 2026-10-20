@@ -8,6 +8,7 @@
     "watch": "node build.js watch",
     "dev-server": "node build.js serve",
     "typecheck": "tsc",
+    "version": "node scripts/sync-version.js && git add manifest.xml Installer/MermaidForExcel.iss",
     "start": "office-addin-debugging start manifest.xml",
     "stop": "office-addin-debugging stop manifest.xml"
   },
