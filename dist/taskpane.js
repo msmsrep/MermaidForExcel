@@ -107581,7 +107581,7 @@ see: https://en.wikipedia.org/wiki/LL_parser#Left_factoring.`;
       tokenTypes: options2.tokenTypes,
       grammarName: options2.grammarName
     });
-    return map_default2(lookaheadValidationErrorMessages, (errorMessage) => Object.assign({ type: ParserDefinitionErrorType.CUSTOM_LOOKAHEAD_VALIDATION }, errorMessage));
+    return map_default2(lookaheadValidationErrorMessages, (errorMessage2) => Object.assign({ type: ParserDefinitionErrorType.CUSTOM_LOOKAHEAD_VALIDATION }, errorMessage2));
   }
   function validateGrammar(topLevels, tokenTypes, errMsgProvider, grammarName) {
     const duplicateErrors = flatMap_default2(topLevels, (currTopLevel) => validateDuplicateProductions(currTopLevel, errMsgProvider));
@@ -115589,10 +115589,10 @@ For Further details.`;
               }
             } catch (err) {
               console.error(`An error occurred while resolving reference to '${ref.$refText}':`, err);
-              const errorMessage = (_a69 = err.message) != null ? _a69 : String(err);
+              const errorMessage2 = (_a69 = err.message) != null ? _a69 : String(err);
               ref._ref = {
                 info: refInfo,
-                message: `An error occurred while resolving reference to '${ref.$refText}': ${errorMessage}`
+                message: `An error occurred while resolving reference to '${ref.$refText}': ${errorMessage2}`
               };
             }
             document2.references.push(ref);
@@ -115751,11 +115751,11 @@ For Further details.`;
             }
           } catch (err) {
             console.error(`An error occurred while resolving reference to '${refInfo.reference.$refText}':`, err);
-            const errorMessage = (_a69 = err.message) != null ? _a69 : String(err);
+            const errorMessage2 = (_a69 = err.message) != null ? _a69 : String(err);
             return {
               error: {
                 info: refInfo,
-                message: `An error occurred while resolving reference to '${refInfo.reference.$refText}': ${errorMessage}`
+                message: `An error occurred while resolving reference to '${refInfo.reference.$refText}': ${errorMessage2}`
               }
             };
           }
@@ -170323,6 +170323,165 @@ ${prefix}${Math.round(value2 * 100) / 100}${suffix}`;
     }
   });
 
+  // src/taskpane/excelShapes.ts
+  var ALT_TEXT_TITLE = "Mermaid Diagram";
+  var PX_TO_PT = 0.75;
+  function activeShapes(ctx) {
+    return ctx.workbook.worksheets.getActiveWorksheet().shapes;
+  }
+  async function listDiagrams() {
+    return Excel.run(async (ctx) => {
+      const shapes4 = activeShapes(ctx);
+      shapes4.load(
+        "items/id,items/name,items/type,items/altTextTitle,items/altTextDescription"
+      );
+      await ctx.sync();
+      return shapes4.items.filter(
+        (shape) => shape.type === "Image" && shape.altTextTitle === ALT_TEXT_TITLE
+      ).map((shape) => {
+        var _a69;
+        return {
+          id: shape.id,
+          name: shape.name,
+          altTextDescription: (_a69 = shape.altTextDescription) != null ? _a69 : ""
+        };
+      });
+    });
+  }
+  async function onSheetActivated(handler) {
+    return Excel.run(async (ctx) => {
+      ctx.workbook.worksheets.onActivated.add(async () => handler());
+      await ctx.sync();
+    });
+  }
+  function isSvgInsertSupported() {
+    var _a69;
+    return !!((_a69 = Office.context.requirements) == null ? void 0 : _a69.isSetSupported("ImageCoercion", "1.2"));
+  }
+  async function loadPlacement(ctx, replaceId) {
+    const cell = ctx.workbook.getActiveCell();
+    cell.load(["left", "top"]);
+    const target = replaceId ? activeShapes(ctx).getItemOrNullObject(replaceId) : void 0;
+    target == null ? void 0 : target.load(["isNullObject", "left", "top", "name"]);
+    await ctx.sync();
+    if (!target) {
+      return { left: cell.left, top: cell.top };
+    }
+    if (target.isNullObject) {
+      throw new Error("Selected diagram no longer exists.");
+    }
+    return { left: target.left, top: target.top, name: target.name };
+  }
+  function applyShapeProps(shape, placement, mermaidCode) {
+    shape.left = placement.left;
+    shape.top = placement.top;
+    if (placement.name) {
+      shape.name = placement.name;
+    }
+    shape.altTextTitle = ALT_TEXT_TITLE;
+    shape.altTextDescription = mermaidCode;
+  }
+  function insertImageShape(image, mermaidCode, replaceId) {
+    return Excel.run(async (ctx) => {
+      const placement = await loadPlacement(ctx, replaceId);
+      const shapes4 = activeShapes(ctx);
+      const shape = shapes4.addImage(image.base64);
+      shape.width = image.width * PX_TO_PT;
+      shape.height = image.height * PX_TO_PT;
+      applyShapeProps(shape, placement, mermaidCode);
+      shape.load("id");
+      if (replaceId) {
+        shapes4.getItem(replaceId).delete();
+      }
+      await ctx.sync();
+      return shape.id;
+    });
+  }
+  async function insertSvgShape(svgStr, mermaidCode, replaceId) {
+    const before = await Excel.run(async (ctx) => {
+      const shapes4 = activeShapes(ctx);
+      shapes4.load("items/id");
+      const placement = await loadPlacement(ctx, replaceId);
+      return { ids: new Set(shapes4.items.map((s2) => s2.id)), placement };
+    });
+    await insertSvgToSelection(svgStr);
+    return Excel.run(async (ctx) => {
+      const shapes4 = activeShapes(ctx);
+      shapes4.load("items/id");
+      await ctx.sync();
+      const added = shapes4.items.filter((s2) => !before.ids.has(s2.id));
+      if (added.length !== 1) {
+        throw new Error("Could not identify the inserted shape.");
+      }
+      const shape = added[0];
+      applyShapeProps(shape, before.placement, mermaidCode);
+      await ctx.sync();
+      if (replaceId) {
+        const target = shapes4.getItemOrNullObject(replaceId);
+        target.load("isNullObject");
+        await ctx.sync();
+        if (!target.isNullObject) {
+          target.delete();
+          await ctx.sync();
+        }
+      }
+      return shape.id;
+    });
+  }
+  function insertSvgToSelection(svgStr) {
+    return new Promise((resolve2, reject3) => {
+      Office.context.document.setSelectedDataAsync(
+        svgStr,
+        { coercionType: Office.CoercionType.XmlSvg },
+        (asyncResult) => {
+          if (asyncResult.status === Office.AsyncResultStatus.Failed) {
+            reject3(new Error(asyncResult.error.message));
+          } else {
+            resolve2();
+          }
+        }
+      );
+    });
+  }
+
+  // src/taskpane/image.ts
+  var RASTER_SCALE = 2;
+  var MAX_CANVAS_PIXELS = 4096 * 4096;
+  var JPEG_QUALITY = 0.92;
+  function serializeSvg(svgEl) {
+    return new XMLSerializer().serializeToString(svgEl);
+  }
+  function svgToDataUrl(svgStr) {
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+  }
+  function loadImage(src) {
+    return new Promise((resolve2, reject3) => {
+      const img = new Image();
+      img.onload = () => resolve2(img);
+      img.onerror = () => reject3(new Error("Failed to load SVG image."));
+      img.src = src;
+    });
+  }
+  async function svgToRaster(svgEl, format3) {
+    var _a69;
+    const img = await loadImage(svgToDataUrl(serializeSvg(svgEl)));
+    const vb = (_a69 = svgEl.viewBox) == null ? void 0 : _a69.baseVal;
+    const w4 = (vb && vb.width > 0 ? vb.width : img.naturalWidth) || 800;
+    const h2 = (vb && vb.height > 0 ? vb.height : img.naturalHeight) || 600;
+    const scale3 = Math.min(RASTER_SCALE, Math.sqrt(MAX_CANVAS_PIXELS / (w4 * h2)));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w4 * scale3));
+    canvas.height = Math.max(1, Math.round(h2 * scale3));
+    const ctx2d = canvas.getContext("2d");
+    if (format3 === "jpeg") {
+      ctx2d.fillStyle = "#ffffff";
+      ctx2d.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx2d.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const dataUrl = format3 === "jpeg" ? canvas.toDataURL("image/jpeg", JPEG_QUALITY) : canvas.toDataURL("image/png");
+    return { base64: dataUrl.split(",")[1], width: w4, height: h2 };
+  }
+
   // node_modules/mermaid/dist/mermaid.core.mjs
   init_chunk_426QAEUC();
   init_chunk_XPW4576I();
@@ -171977,15 +172136,9 @@ ${config5.themeCSS}`;
   };
   var mermaid_default = mermaid;
 
-  // src/taskpane/taskpane.ts
-  var ALT_TEXT_TITLE = "Mermaid Diagram";
-  var RASTER_SCALE = 2;
-  var MAX_CANVAS_PIXELS = 4096 * 4096;
-  var JPEG_QUALITY = 0.92;
-  var PX_TO_PT = 0.75;
-  var MIN_INPUT_HEIGHT = 40;
-  var MIN_PREVIEW_HEIGHT = 120;
-  Office.onReady(() => {
+  // src/taskpane/render.ts
+  var GRAPH_ID = "mermaid-graph";
+  function initMermaid() {
     mermaid_default.initialize({
       startOnLoad: false,
       theme: "default",
@@ -171995,112 +172148,19 @@ ${config5.themeCSS}`;
         htmlLabels: false
       }
     });
-    const input = document.getElementById("mermaid-input");
-    const splitter = document.getElementById("splitter");
-    const preview = document.getElementById("preview");
-    const errDiv = document.getElementById("error");
-    const insertBtn = document.getElementById("insert-btn");
-    const downloadBtn = document.getElementById(
-      "download-btn"
-    );
-    const diagramSelect = document.getElementById(
-      "sheet-diagram-select"
-    );
-    const formatSelect = document.getElementById(
-      "format-select"
-    );
-    const previewHintHtml = '<span class="hint">Type Mermaid code</span>';
-    let renderDebounceTimer;
-    let renderRequestId = 0;
-    let selectedFormat = "png";
-    let diagramItems = [];
-    formatSelect.addEventListener("change", () => {
-      selectedFormat = formatSelect.value;
-    });
-    function updateDiagramOptions(items, selectedId = "") {
-      diagramItems = items;
-      diagramSelect.innerHTML = "";
-      const defaultOption = document.createElement("option");
-      defaultOption.value = "";
-      defaultOption.textContent = "(No diagram selected)";
-      diagramSelect.appendChild(defaultOption);
-      for (const item of items) {
-        const option2 = document.createElement("option");
-        option2.value = item.id;
-        option2.textContent = item.name;
-        diagramSelect.appendChild(option2);
-      }
-      diagramSelect.value = selectedId && items.some((item) => item.id === selectedId) ? selectedId : "";
-    }
-    async function loadDiagramItems(selectedId = diagramSelect.value) {
-      try {
-        const items = await Excel.run(async (ctx) => {
-          const shapes4 = ctx.workbook.worksheets.getActiveWorksheet().shapes;
-          shapes4.load(
-            "items/id,items/name,items/type,items/altTextTitle,items/altTextDescription"
-          );
-          await ctx.sync();
-          return shapes4.items.filter(
-            (shape) => shape.type === "Image" && shape.altTextTitle === ALT_TEXT_TITLE
-          ).map((shape) => {
-            var _a69;
-            return {
-              id: shape.id,
-              name: shape.name,
-              altTextDescription: (_a69 = shape.altTextDescription) != null ? _a69 : ""
-            };
-          });
-        });
-        updateDiagramOptions(items, selectedId);
-      } catch (e3) {
-        updateDiagramOptions([], "");
-      }
-    }
-    diagramSelect.addEventListener("focus", () => {
-      void loadDiagramItems();
-    });
-    diagramSelect.addEventListener("change", () => {
-      const selected = diagramItems.find((item) => item.id === diagramSelect.value);
-      if (!selected) {
-        return;
-      }
-      input.value = selected.altTextDescription;
-      void renderPreview();
-    });
-    async function renderPreview() {
-      var _a69;
-      const requestId = ++renderRequestId;
-      errDiv.textContent = "";
-      insertBtn.disabled = true;
-      downloadBtn.disabled = true;
-      const code = input.value.trim();
-      if (!code) {
-        preview.innerHTML = previewHintHtml;
-        return;
-      }
-      try {
-        (_a69 = document.getElementById("mermaid-graph")) == null ? void 0 : _a69.remove();
-        const { svg: svg2 } = await mermaid_default.render("mermaid-graph", code);
-        if (requestId !== renderRequestId) return;
-        preview.innerHTML = svg2;
-        insertBtn.disabled = false;
-        downloadBtn.disabled = false;
-      } catch (e3) {
-        if (requestId !== renderRequestId) return;
-        preview.innerHTML = "";
-        insertBtn.disabled = true;
-        downloadBtn.disabled = true;
-        errDiv.textContent = `Render error: ${e3 instanceof Error ? e3.message : String(e3)}`;
-      }
-    }
-    input.addEventListener("input", () => {
-      if (renderDebounceTimer !== void 0) {
-        window.clearTimeout(renderDebounceTimer);
-      }
-      renderDebounceTimer = window.setTimeout(() => {
-        void renderPreview();
-      }, 250);
-    });
+  }
+  async function renderMermaid(code) {
+    var _a69;
+    (_a69 = document.getElementById(GRAPH_ID)) == null ? void 0 : _a69.remove();
+    const { svg: svg2 } = await mermaid_default.render(GRAPH_ID, code);
+    return svg2;
+  }
+
+  // src/taskpane/splitter.ts
+  var MIN_INPUT_HEIGHT = 40;
+  var MIN_PREVIEW_HEIGHT = 120;
+  var KEYBOARD_STEP = 10;
+  function initSplitter(splitter, input, preview) {
     function setInputHeight(height2) {
       const max10 = Math.max(
         MIN_INPUT_HEIGHT,
@@ -172130,186 +172190,155 @@ ${config5.themeCSS}`;
     splitter.addEventListener("keydown", (e3) => {
       if (e3.key !== "ArrowUp" && e3.key !== "ArrowDown") return;
       e3.preventDefault();
-      setInputHeight(input.offsetHeight + (e3.key === "ArrowUp" ? -10 : 10));
+      const delta = e3.key === "ArrowUp" ? -KEYBOARD_STEP : KEYBOARD_STEP;
+      setInputHeight(input.offsetHeight + delta);
+    });
+  }
+
+  // src/taskpane/util.ts
+  function byId(id33) {
+    const el = document.getElementById(id33);
+    if (!el) {
+      throw new Error(`Element #${id33} not found.`);
+    }
+    return el;
+  }
+  function errorMessage(e3) {
+    return e3 instanceof Error ? e3.message : String(e3);
+  }
+
+  // src/taskpane/taskpane.ts
+  var RENDER_DEBOUNCE_MS = 250;
+  var PREVIEW_HINT_HTML = '<span class="hint">Type Mermaid code</span>';
+  var FILE_EXTENSIONS = {
+    png: "png",
+    jpeg: "jpg",
+    svg: "svg"
+  };
+  Office.onReady(() => {
+    initMermaid();
+    const input = byId("mermaid-input");
+    const splitter = byId("splitter");
+    const preview = byId("preview");
+    const errDiv = byId("error");
+    const insertBtn = byId("insert-btn");
+    const downloadBtn = byId("download-btn");
+    const diagramSelect = byId("sheet-diagram-select");
+    const formatSelect = byId("format-select");
+    let renderDebounceTimer;
+    let renderRequestId = 0;
+    let diagramItems = [];
+    const selectedFormat = () => formatSelect.value;
+    function setActionsEnabled(enabled) {
+      insertBtn.disabled = !enabled;
+      downloadBtn.disabled = !enabled;
+    }
+    function updateDiagramOptions(items, selectedId = "") {
+      diagramItems = items;
+      diagramSelect.innerHTML = "";
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "(No diagram selected)";
+      diagramSelect.appendChild(defaultOption);
+      for (const item of items) {
+        const option2 = document.createElement("option");
+        option2.value = item.id;
+        option2.textContent = item.name;
+        diagramSelect.appendChild(option2);
+      }
+      diagramSelect.value = selectedId && items.some((item) => item.id === selectedId) ? selectedId : "";
+    }
+    async function refreshDiagramOptions(selectedId = diagramSelect.value) {
+      try {
+        updateDiagramOptions(await listDiagrams(), selectedId);
+      } catch (e3) {
+        updateDiagramOptions([], "");
+      }
+    }
+    diagramSelect.addEventListener("focus", () => {
+      void refreshDiagramOptions();
+    });
+    diagramSelect.addEventListener("change", () => {
+      const selected = diagramItems.find((item) => item.id === diagramSelect.value);
+      if (!selected) {
+        return;
+      }
+      input.value = selected.altTextDescription;
+      void renderPreview();
+    });
+    onSheetActivated(() => updateDiagramOptions([], "")).catch(() => {
+    });
+    async function renderPreview() {
+      const requestId = ++renderRequestId;
+      errDiv.textContent = "";
+      setActionsEnabled(false);
+      const code = input.value.trim();
+      if (!code) {
+        preview.innerHTML = PREVIEW_HINT_HTML;
+        return;
+      }
+      try {
+        const svg2 = await renderMermaid(code);
+        if (requestId !== renderRequestId) return;
+        preview.innerHTML = svg2;
+        setActionsEnabled(true);
+      } catch (e3) {
+        if (requestId !== renderRequestId) return;
+        preview.innerHTML = "";
+        errDiv.textContent = `Render error: ${errorMessage(e3)}`;
+      }
+    }
+    input.addEventListener("input", () => {
+      window.clearTimeout(renderDebounceTimer);
+      renderDebounceTimer = window.setTimeout(() => {
+        void renderPreview();
+      }, RENDER_DEBOUNCE_MS);
+    });
+    initSplitter(splitter, input, preview);
+    function bindSvgAction(button, errorPrefix, action) {
+      button.addEventListener("click", async () => {
+        errDiv.textContent = "";
+        const svgEl = preview.querySelector("svg");
+        if (!svgEl) {
+          errDiv.textContent = "Please render first";
+          return;
+        }
+        try {
+          await action(svgEl);
+        } catch (e3) {
+          errDiv.textContent = `${errorPrefix}: ${errorMessage(e3)}`;
+        }
+      });
+    }
+    bindSvgAction(downloadBtn, "Download error", async (svgEl) => {
+      const format3 = selectedFormat();
+      const dataUrl = format3 === "svg" ? svgToDataUrl(serializeSvg(svgEl)) : `data:image/${format3};base64,` + (await svgToRaster(svgEl, format3)).base64;
+      const a2 = document.createElement("a");
+      a2.href = dataUrl;
+      a2.download = `diagram.${FILE_EXTENSIONS[format3]}`;
+      a2.click();
+    });
+    bindSvgAction(insertBtn, "Insert error", async (svgEl) => {
+      const format3 = selectedFormat();
+      const mermaidCode = input.value.trim();
+      const replaceId = diagramSelect.value || void 0;
+      let insertedShapeId;
+      if (format3 === "svg") {
+        if (!isSvgInsertSupported()) {
+          throw new Error(
+            "SVG insertion is not supported in this version of Excel. Use PNG or JPEG."
+          );
+        }
+        insertedShapeId = await insertSvgShape(serializeSvg(svgEl), mermaidCode, replaceId);
+      } else {
+        const image = await svgToRaster(svgEl, format3);
+        insertedShapeId = await insertImageShape(image, mermaidCode, replaceId);
+      }
+      await refreshDiagramOptions(insertedShapeId);
     });
     void renderPreview();
-    void loadDiagramItems();
-    Excel.run(async (ctx) => {
-      ctx.workbook.worksheets.onActivated.add(() => {
-        updateDiagramOptions([], "");
-        return Promise.resolve();
-      });
-      await ctx.sync();
-    }).catch(() => {
-    });
-    downloadBtn.addEventListener("click", async () => {
-      errDiv.textContent = "";
-      const svgEl = preview.querySelector("svg");
-      if (!svgEl) {
-        errDiv.textContent = "Please render first";
-        return;
-      }
-      try {
-        let dataUrl;
-        let filename;
-        if (selectedFormat === "svg") {
-          const svgStr = new XMLSerializer().serializeToString(svgEl);
-          dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
-          filename = "diagram.svg";
-        } else {
-          const { base64 } = await svgToRaster(svgEl, selectedFormat);
-          dataUrl = `data:image/${selectedFormat};base64,` + base64;
-          filename = selectedFormat === "jpeg" ? "diagram.jpg" : "diagram.png";
-        }
-        const a2 = document.createElement("a");
-        a2.href = dataUrl;
-        a2.download = filename;
-        a2.click();
-      } catch (e3) {
-        errDiv.textContent = `Download error: ${e3 instanceof Error ? e3.message : String(e3)}`;
-      }
-    });
-    insertBtn.addEventListener("click", async () => {
-      var _a69;
-      errDiv.textContent = "";
-      const svgEl = preview.querySelector("svg");
-      if (!svgEl) {
-        errDiv.textContent = "Please render first";
-        return;
-      }
-      try {
-        const mermaidCode = input.value.trim();
-        const replaceId = diagramSelect.value || void 0;
-        let insertedShapeId;
-        if (selectedFormat === "svg") {
-          if (!((_a69 = Office.context.requirements) == null ? void 0 : _a69.isSetSupported("ImageCoercion", "1.2"))) {
-            throw new Error(
-              "SVG insertion is not supported in this version of Excel. Use PNG or JPEG."
-            );
-          }
-          const svgStr = new XMLSerializer().serializeToString(svgEl);
-          insertedShapeId = await insertSvgShape(svgStr, mermaidCode, replaceId);
-        } else {
-          const image = await svgToRaster(svgEl, selectedFormat);
-          insertedShapeId = await insertImageShape(image, mermaidCode, replaceId);
-        }
-        await loadDiagramItems(insertedShapeId);
-      } catch (e3) {
-        errDiv.textContent = `Insert error: ${e3 instanceof Error ? e3.message : String(e3)}`;
-      }
-    });
+    void refreshDiagramOptions();
   });
-  async function loadPlacement(ctx, replaceId) {
-    const cell = ctx.workbook.getActiveCell();
-    cell.load(["left", "top"]);
-    const target = replaceId ? ctx.workbook.worksheets.getActiveWorksheet().shapes.getItemOrNullObject(replaceId) : void 0;
-    target == null ? void 0 : target.load(["isNullObject", "left", "top", "name"]);
-    await ctx.sync();
-    if (!target) {
-      return { left: cell.left, top: cell.top };
-    }
-    if (target.isNullObject) {
-      throw new Error("Selected diagram no longer exists.");
-    }
-    return { left: target.left, top: target.top, name: target.name };
-  }
-  function applyShapeProps(shape, placement, mermaidCode) {
-    shape.left = placement.left;
-    shape.top = placement.top;
-    if (placement.name) {
-      shape.name = placement.name;
-    }
-    shape.altTextTitle = ALT_TEXT_TITLE;
-    shape.altTextDescription = mermaidCode;
-  }
-  function insertImageShape(image, mermaidCode, replaceId) {
-    return Excel.run(async (ctx) => {
-      const placement = await loadPlacement(ctx, replaceId);
-      const shapes4 = ctx.workbook.worksheets.getActiveWorksheet().shapes;
-      const shape = shapes4.addImage(image.base64);
-      shape.width = image.width * PX_TO_PT;
-      shape.height = image.height * PX_TO_PT;
-      applyShapeProps(shape, placement, mermaidCode);
-      shape.load("id");
-      if (replaceId) {
-        shapes4.getItem(replaceId).delete();
-      }
-      await ctx.sync();
-      return shape.id;
-    });
-  }
-  async function insertSvgShape(svgStr, mermaidCode, replaceId) {
-    const before = await Excel.run(async (ctx) => {
-      const shapes4 = ctx.workbook.worksheets.getActiveWorksheet().shapes;
-      shapes4.load("items/id");
-      const placement = await loadPlacement(ctx, replaceId);
-      return { ids: new Set(shapes4.items.map((s2) => s2.id)), placement };
-    });
-    await insertSvgToSelection(svgStr);
-    return Excel.run(async (ctx) => {
-      const shapes4 = ctx.workbook.worksheets.getActiveWorksheet().shapes;
-      shapes4.load("items/id");
-      await ctx.sync();
-      const added = shapes4.items.filter((s2) => !before.ids.has(s2.id));
-      if (added.length !== 1) {
-        throw new Error("Could not identify the inserted shape.");
-      }
-      const shape = added[0];
-      applyShapeProps(shape, before.placement, mermaidCode);
-      await ctx.sync();
-      if (replaceId) {
-        const target = shapes4.getItemOrNullObject(replaceId);
-        target.load("isNullObject");
-        await ctx.sync();
-        if (!target.isNullObject) {
-          target.delete();
-          await ctx.sync();
-        }
-      }
-      return shape.id;
-    });
-  }
-  function insertSvgToSelection(svgStr) {
-    return new Promise((resolve2, reject3) => {
-      Office.context.document.setSelectedDataAsync(
-        svgStr,
-        { coercionType: Office.CoercionType.XmlSvg },
-        (asyncResult) => {
-          if (asyncResult.status === Office.AsyncResultStatus.Failed) {
-            reject3(new Error(asyncResult.error.message));
-          } else {
-            resolve2();
-          }
-        }
-      );
-    });
-  }
-  async function svgToRaster(svgEl, format3) {
-    var _a69;
-    const svgStr = new XMLSerializer().serializeToString(svgEl);
-    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
-    const img = await new Promise((resolve2, reject3) => {
-      const i3 = new Image();
-      i3.onload = () => resolve2(i3);
-      i3.onerror = () => reject3(new Error("Failed to load SVG image."));
-      i3.src = url;
-    });
-    const vb = (_a69 = svgEl.viewBox) == null ? void 0 : _a69.baseVal;
-    const w4 = (vb && vb.width > 0 ? vb.width : img.naturalWidth) || 800;
-    const h2 = (vb && vb.height > 0 ? vb.height : img.naturalHeight) || 600;
-    const scale3 = Math.min(RASTER_SCALE, Math.sqrt(MAX_CANVAS_PIXELS / (w4 * h2)));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(w4 * scale3));
-    canvas.height = Math.max(1, Math.round(h2 * scale3));
-    const ctx2d = canvas.getContext("2d");
-    if (format3 === "jpeg") {
-      ctx2d.fillStyle = "#ffffff";
-      ctx2d.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    ctx2d.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const dataUrl = format3 === "jpeg" ? canvas.toDataURL("image/jpeg", JPEG_QUALITY) : canvas.toDataURL("image/png");
-    return { base64: dataUrl.split(",")[1], width: w4, height: h2 };
-  }
 })();
 /*! Bundled license information:
 
