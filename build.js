@@ -37,11 +37,10 @@ function ensureIcons() {
 function copyStatics() {
   fs.mkdirSync(DIST, { recursive: true });
 
-  // HTML
-  fs.copyFileSync(
-    path.join(ROOT, "src/taskpane/taskpane.html"),
-    path.join(DIST, "taskpane.html"),
-  );
+  // HTML / CSS
+  for (const f of ["taskpane.html", "taskpane.css"]) {
+    fs.copyFileSync(path.join(ROOT, "src/taskpane", f), path.join(DIST, f));
+  }
 
   // assets/
   const srcAssets = path.join(ROOT, "assets");
