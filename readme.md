@@ -32,6 +32,7 @@ MermaidForExcel/
     image.ts               ← SVG → PNG/JPEG conversion
     excelShapes.ts         ← Excel shape insert / replace / list
     splitter.ts            ← Editor / preview splitter
+  test/                    ← Vitest tests (Office.js, mermaid and Canvas are mocked)
   dist/                    ← Build output (not committed; deployed by GitHub Actions)
 ```
 
@@ -72,7 +73,9 @@ An **[Open Mermaid]** button will be added to the Home tab.
 | `npm run build` | One-time build to `dist/` (manifest with production URLs) |
 | `npm run build:dev` | One-time build to `dist/` (manifest with `https://localhost:3000`) |
 | `npm run watch` | Watch for file changes and auto-rebuild |
-| `npm run typecheck` | Type-check with `tsc` |
+| `npm run typecheck` | Type-check the source and tests with `tsc` |
+| `npm test` | Run the tests with Vitest |
+| `npm run test:watch` | Run the tests in watch mode |
 | `npm version <patch\|minor\|major>` | Bump the version and sync it to `manifest.xml` and the installer |
 
 ## Replacing Icons

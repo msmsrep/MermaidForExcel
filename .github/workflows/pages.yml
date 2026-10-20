@@ -28,6 +28,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build
       # manifest.xml の本番 URL (…/MermaidForExcel/dist/) に合わせて dist/ 配下に置く
       - run: mkdir _site && cp -r dist _site/dist
