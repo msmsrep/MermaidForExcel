@@ -4,8 +4,6 @@
 const esbuild = require("esbuild");
 const fs = require("fs");
 const path = require("path");
-const http = require("http");
-const https = require("https");
 
 const ROOT = __dirname;
 const DIST = path.join(ROOT, "dist");
@@ -13,25 +11,6 @@ const PORT = 3000;
 
 const DEV_BASE_URL = "https://localhost:3000";
 const PROD_BASE_URL = "https://msmsrep.github.io/MermaidForExcel/dist";
-
-// ── アイコン生成 ──────────────────────────────────────────────────────────────
-// 最小の 1×1 PNG プレースホルダー（assets/ が空の場合のみ生成）
-const PLACEHOLDER_PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg==",
-  "base64",
-);
-
-function ensureIcons() {
-  const dir = path.join(ROOT, "assets");
-  fs.mkdirSync(dir, { recursive: true });
-  for (const size of [16, 32, 64, 80]) {
-    const file = path.join(dir, `icon-${size}.png`);
-    if (!fs.existsSync(file)) {
-      fs.writeFileSync(file, PLACEHOLDER_PNG);
-      console.log(`  created placeholder: assets/icon-${size}.png`);
-    }
-  }
-}
 
 // ── 静的ファイルのコピー ───────────────────────────────────────────────────────
 function copyStatics() {
@@ -72,75 +51,75 @@ const BUNDLE = {
   sourcemap: true,
 };
 
+// ── 各モード ──────────────────────────────────────────────────────────────────
+/**
+ * ワンタイムビルド
+ * @param {string} baseUrl manifest.xml に埋め込む URL
+ */
+async function buildOnce(baseUrl) {
+  copyManifest(baseUrl);
+  await esbuild.build(BUNDLE);
+  console.log("  build 完了 → dist/");
+}
+
+/** ファイル監視モード */
+async function watch() {
+  copyManifest(DEV_BASE_URL);
+  const ctx = await esbuild.context({ ...BUNDLE, sourcemap: "inline" });
+  await ctx.watch();
+  console.log("  watch モード開始 (Ctrl+C で停止)");
+}
+
+/** esbuild の HTTPS 開発サーバ */
+async function serve() {
+  copyManifest(DEV_BASE_URL);
+
+  /** @type {{ localhostCertificatePath: string, localhostKeyPath: string }} */
+  let certs;
+  try {
+    // 証明書がインストール済みで有効なことを確認する
+    await require("office-addin-dev-certs").getHttpsServerOptions();
+    certs = require("office-addin-dev-certs/lib/defaults");
+  } catch {
+    console.error(
+      "\n  [エラー] HTTPS 証明書が見つかりません。先に以下を実行してください:",
+    );
+    console.error("  npx office-addin-dev-certs install\n");
+    process.exit(1);
+  }
+
+  const ctx = await esbuild.context(BUNDLE);
+  await ctx.serve({
+    servedir: DIST,
+    port: PORT,
+    certfile: certs.localhostCertificatePath,
+    keyfile: certs.localhostKeyPath,
+  });
+  console.log(`\n  Mermaid for Excel:`);
+  console.log(`  ${DEV_BASE_URL}/taskpane.html`);
+  console.log(
+    `\n  Excel の [挿入] → [アドイン] → [アドインをアップロード] で manifest.xml を選択\n`,
+  );
+}
+
+/** @type {Record<string, () => Promise<void>>} */
+const MODES = {
+  build: () => buildOnce(PROD_BASE_URL),
+  dev: () => buildOnce(DEV_BASE_URL),
+  watch,
+  serve,
+};
+
 // ── エントリポイント ───────────────────────────────────────────────────────────
 const [, , mode = "build"] = process.argv; // node build.js [build|dev|watch|serve]
 
 (async () => {
-  ensureIcons();
-  copyStatics();
-
-  if (mode === "serve") {
-    copyManifest(DEV_BASE_URL);
-    // ── esbuild の HTTP サーバ + HTTPS プロキシ ────────────────────────────
-    const ctx = await esbuild.context(BUNDLE);
-    const { port: ebPort } = await ctx.serve({ servedir: DIST });
-    const host = "localhost";
-
-    let tlsOpts;
-    try {
-      const devCerts = require("office-addin-dev-certs");
-      tlsOpts = await devCerts.getHttpsServerOptions();
-    } catch {
-      console.error(
-        "\n  [エラー] HTTPS 証明書が見つかりません。先に以下を実行してください:",
-      );
-      console.error("  npx office-addin-dev-certs install\n");
-      process.exit(1);
-    }
-
-    https
-      .createServer(tlsOpts, (req, res) => {
-        const proxy = http.request(
-          {
-            hostname: host,
-            port: ebPort,
-            path: req.url,
-            method: req.method,
-            headers: req.headers,
-          },
-          (r) => {
-            res.writeHead(r.statusCode ?? 200, r.headers);
-            r.pipe(res, { end: true });
-          },
-        );
-        proxy.on("error", (e) => {
-          console.error(e);
-          res.writeHead(502);
-          res.end();
-        });
-        req.pipe(proxy, { end: true });
-      })
-      .listen(PORT, () => {
-        console.log(`\n  Mermaid for Excel:`);
-        console.log(`  https://localhost:${PORT}/taskpane.html`);
-        console.log(
-          `\n  Excel の [挿入] → [アドイン] → [アドインをアップロード] で manifest.xml を選択\n`,
-        );
-      });
-  } else if (mode === "watch") {
-    // ── ファイル監視モード ────────────────────────────────────────────────
-    copyManifest(DEV_BASE_URL);
-    const ctx = await esbuild.context({ ...BUNDLE, sourcemap: "inline" });
-    await ctx.watch();
-    console.log("  watch モード開始 (Ctrl+C で停止)");
-  } else {
-    // ── ワンタイムビルド（dev: 開発 URL / build: 本番 URL）──────────────────
-    copyManifest(mode === "dev" ? DEV_BASE_URL : PROD_BASE_URL);
-    const ctx = await esbuild.context(BUNDLE);
-    await ctx.rebuild();
-    await ctx.dispose();
-    console.log("  build 完了 → dist/");
+  const run = MODES[mode];
+  if (!run) {
+    throw new Error(`Unknown mode: ${mode} (${Object.keys(MODES).join("|")})`);
   }
+  copyStatics();
+  await run();
 })().catch((e) => {
   console.error(e);
   process.exit(1);
