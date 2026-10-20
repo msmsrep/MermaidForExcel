@@ -45,60 +45,6 @@
       "problemMatcher": []
     },
     {
-      "label": "Debug: Outlook Desktop",
-      "type": "shell",
-      "command": "npm",
-      "args": [
-        "run",
-        "start",
-        "--",
-        "desktop",
-        "--app",
-        "outlook"
-      ],
-      "presentation": {
-        "clear": true,
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Debug: PowerPoint Desktop",
-      "type": "shell",
-      "command": "npm",
-      "args": [
-        "run",
-        "start",
-        "--",
-        "desktop",
-        "--app",
-        "powerpoint"
-      ],
-      "presentation": {
-        "clear": true,
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Debug: Word Desktop",
-      "type": "shell",
-      "command": "npm",
-      "args": [
-        "run",
-        "start",
-        "--",
-        "desktop",
-        "--app",
-        "word"
-      ],
-      "presentation": {
-        "clear": true,
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
       "label": "Dev Server",
       "type": "npm",
       "script": "dev-server",
@@ -118,22 +64,6 @@
         "showReuseMessage": false
       },
       "problemMatcher": []
-    },
-    {
-      "label": "Lint: Check for problems",
-      "type": "npm",
-      "script": "lint",
-      "problemMatcher": [
-        "$eslint-stylish"
-      ]
-    },
-    {
-      "label": "Lint: Fix all auto-fixable problems",
-      "type": "npm",
-      "script": "lint:fix",
-      "problemMatcher": [
-        "$eslint-stylish"
-      ]
     },
     {
       "label": "Stop Debug",

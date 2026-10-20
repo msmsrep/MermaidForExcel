@@ -22,7 +22,7 @@
         color: #323130;
         display: flex;
         flex-direction: column;
-        min-height: 100dvh;
+        height: 100dvh;
         padding: 12px;
         gap: 8px;
         overflow-y: auto;
@@ -40,7 +40,7 @@
         color: #323130;
       }
 
-      #sheet-svg-select {
+      #sheet-diagram-select {
         width: 100%;
         padding: 6px 8px;
         border: 1px solid #c7c7c7;
@@ -49,7 +49,7 @@
         color: #323130;
         font-size: 12px;
       }
-      #sheet-svg-select:focus {
+      #sheet-diagram-select:focus {
         outline: none;
         border-color: #0078d4;
       }
@@ -62,12 +62,38 @@
         border-radius: 4px;
         font-family: "Consolas", "Courier New", monospace;
         font-size: 12px;
-        resize: vertical;
+        resize: none;
         flex-shrink: 0;
       }
       textarea:focus {
         outline: none;
         border-color: #0078d4;
+      }
+
+      #splitter {
+        flex-shrink: 0;
+        height: 8px;
+        margin: -4px 0;
+        cursor: row-resize;
+        touch-action: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #splitter::before {
+        content: "";
+        width: 32px;
+        height: 3px;
+        border-radius: 2px;
+        background: #c7c7c7;
+      }
+      #splitter:hover::before,
+      #splitter:focus-visible::before,
+      #splitter.dragging::before {
+        background: #0078d4;
+      }
+      #splitter:focus {
+        outline: none;
       }
 
       .buttons {
@@ -144,7 +170,8 @@
       }
 
       #preview {
-        min-height: 200px;
+        flex: 1 1 auto;
+        min-height: 120px;
         overflow: auto;
         border: 1px solid #e1e1e1;
         border-radius: 4px;
@@ -169,9 +196,9 @@
   <body>
     <h1>Mermaid for Excel</h1>
 
-    <label class="field-label" for="sheet-svg-select">Sheet SVG</label>
-    <select id="sheet-svg-select" aria-label="Select SVG in active sheet">
-      <option value="">(No SVG selected)</option>
+    <label class="field-label" for="sheet-diagram-select">Sheet diagram</label>
+    <select id="sheet-diagram-select" aria-label="Select Mermaid diagram in active sheet">
+      <option value="">(No diagram selected)</option>
     </select>
 
     <label class="field-label" for="mermaid-input"></label>
@@ -183,6 +210,13 @@ graph LR
     C --> E[End]
     D --> E</textarea
     >
+    <div
+      id="splitter"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize editor"
+      tabindex="0"
+    ></div>
 
     <div class="buttons">
       <div class="insert-group">

@@ -74,7 +74,7 @@ const BUNDLE = {
 };
 
 // ── エントリポイント ───────────────────────────────────────────────────────────
-const [, , mode = "build"] = process.argv; // node build.js [build|watch|serve]
+const [, , mode = "build"] = process.argv; // node build.js [build|dev|watch|serve]
 
 (async () => {
   ensureIcons();
@@ -135,8 +135,8 @@ const [, , mode = "build"] = process.argv; // node build.js [build|watch|serve]
     await ctx.watch();
     console.log("  watch モード開始 (Ctrl+C で停止)");
   } else {
-    // ── ワンタイムビルド ──────────────────────────────────────────────────
-    copyManifest(PROD_BASE_URL);
+    // ── ワンタイムビルド（dev: 開発 URL / build: 本番 URL）──────────────────
+    copyManifest(mode === "dev" ? DEV_BASE_URL : PROD_BASE_URL);
     const ctx = await esbuild.context(BUNDLE);
     await ctx.rebuild();
     await ctx.dispose();

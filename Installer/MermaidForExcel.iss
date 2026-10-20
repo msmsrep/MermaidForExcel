@@ -3,16 +3,12 @@
 
 #define MyAppName "MermaidForExcel"
 #define MyAppVersion "1.0.0.0"
-#define MyAppPublisher "My Company, Inc."
-#define MyAppURL "https://www.example.com/"
-#define MyAppExeName "manifest.xml"
+#define MyAppPublisher "msmsrep"
+#define MyAppURL "https://github.com/msmsrep/MermaidForExcel"
+#define MyManifestName "manifest.xml"
 #define MyShareName "MermaidForExcel"
-#define MyAppAssocName MyAppName + " File"
-#define MyAppAssocExt ".myp"
-#define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
 ; パスは""ではなく''で囲む
 #define MyAppPath '..\dist\'
-; #define MyAppVersion GetVersionNumbersString(MyAppPath + MyAppExeName)
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -23,7 +19,7 @@ AppVersion={#MyAppVersion}
 ; AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
-AppSupportURL={#MyAppURL}
+AppSupportURL={#MyAppURL}/issues
 AppUpdatesURL={#MyAppURL}
 ; プログラムフォルダ
 ; DefaultDirName={autopf}\App\{#MyAppName}
@@ -31,9 +27,9 @@ AppUpdatesURL={#MyAppURL}
 ; マイドキュメント
 ; userdocsはonedriveフォルダにリダイレクトされる
 ; DefaultDirName={userdocs}\App\OfficeAddIns\Excel\{#MyAppName}
-DefaultDirName=C:\Users\{username}\Documents\OfficeAddIns\Excel\MermaidForExcel
+; 非管理者で実行するため、ログオン中のユーザーのプロファイル配下になる
+DefaultDirName={%USERPROFILE}\Documents\OfficeAddIns\Excel\{#MyAppName}
 
-UninstallDisplayIcon={app}\{#MyAppExeName}
 ; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run
 ; on anything but x64 and Windows 11 on Arm.
 ArchitecturesAllowed=x64compatible
@@ -42,11 +38,10 @@ ArchitecturesAllowed=x64compatible
 ; meaning it should use the native 64-bit Program Files directory and
 ; the 64-bit view of the registry.
 ArchitecturesInstallIn64BitMode=x64compatible
-ChangesAssociations=yes
 DisableProgramGroupPage=yes
-; Uncomment the following line to run in non administrative install mode (install for current user only).
-; SMB 共有の作成には管理者権限が必要
-PrivilegesRequired=admin
+; ログオン中のユーザーとして実行する（HKCU とプロファイルを実ユーザーのものにするため）。
+; 管理者権限が必要な SMB 共有の作成・削除だけを個別に昇格して実行する。
+PrivilegesRequired=lowest
 ; HKCU への登録は意図的（Office の TrustedCatalogs はユーザー単位）
 UsedUserAreasWarning=no
 OutputDir=.
@@ -68,7 +63,7 @@ Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 
 [Files]
 ; xmlを配布
-Source: "{#MyAppPath}{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppPath}{#MyManifestName}"; DestDir: "{app}"; Flags: ignoreversion
 ; フォルダをまとめて指定する場合
 ; Source: "{#MyAppPath}*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
@@ -83,9 +78,9 @@ Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7d
 Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; ValueType: dword; ValueName: "Flags"; ValueData: 1
 
 [Icons]
-; Name: "{autoprograms}\App\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-; Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-; Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: startupicon
+; Name: "{autoprograms}\App\{#MyAppName}"; Filename: "{app}\{#MyManifestName}"
+; Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyManifestName}"; Tasks: desktopicon
+; Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyManifestName}"; Tasks: startupicon
 
 [Run]
 
@@ -93,13 +88,14 @@ Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7d
 
 
 [Code]
+{ 共有の参照（管理者権限不要）。成功時 True }
 function ExecNetShare(const Params: string): Boolean;
 var
 	ResultCode: Integer;
 begin
 	Result := Exec(
-		ExpandConstant('{cmd}'),
-		'/C net share ' + ExpandConstant(Params),
+		ExpandConstant('{sys}\net.exe'),
+		'share ' + ExpandConstant(Params),
 		'',
 		SW_HIDE,
 		ewWaitUntilTerminated,
@@ -107,17 +103,40 @@ begin
 	) and (ResultCode = 0);
 end;
 
+{ 共有の作成・削除（UAC で昇格して実行）。
+  ShellExec は終了コードを返さないため、結果は呼び出し側で ExecNetShare により確認する }
+procedure ExecNetShareElevated(const Params: string);
+var
+	ErrorCode: Integer;
+begin
+	ShellExec(
+		'runas',
+		ExpandConstant('{sys}\net.exe'),
+		'share ' + ExpandConstant(Params),
+		'',
+		SW_HIDE,
+		ewWaitUntilTerminated,
+		ErrorCode
+	);
+end;
+
+function CatalogShareExists: Boolean;
+begin
+	Result := ExecNetShare('{#MyShareName}');
+end;
+
 procedure EnsureCatalogShare;
 begin
 	{ 既に共有が存在する場合は作成をスキップ }
-	if ExecNetShare('{#MyShareName}') then
+	if CatalogShareExists then
 		Exit;
 
-	if not ExecNetShare('{#MyShareName}="{app}"') then
+	ExecNetShareElevated('{#MyShareName}="{app}"');
+	if not CatalogShareExists then
 	begin
 		MsgBox(
 			'共有フォルダ "{#MyShareName}" の作成に失敗しました。' + #13#10 +
-			'管理者権限でセットアップを実行してください。',
+			'管理者権限の確認で [はい] を選択して、再度セットアップを実行してください。',
 			mbError,
 			MB_OK
 		);
@@ -126,7 +145,8 @@ end;
 
 procedure RemoveCatalogShare;
 begin
-	ExecNetShare('{#MyShareName} /delete /y');
+	if CatalogShareExists then
+		ExecNetShareElevated('{#MyShareName} /delete /y');
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
