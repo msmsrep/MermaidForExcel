@@ -4,13 +4,14 @@
 
 An Office Add-in that creates diagrams using Mermaid syntax and inserts them as images into Excel sheets.
 
-Quickly draw flowcharts, sequence diagrams, ER diagrams, and more using text-based notation, then insert them as PNG/JPEG images into the active sheet. All processing happens locally — your input is never sent to external servers.
+Quickly draw flowcharts, sequence diagrams, ER diagrams, and more using text-based notation, then insert them as PNG/JPEG/SVG images into the active sheet. All processing happens locally — your input is never sent to external servers.
 
 ### Key Features
 
-- **Real-time preview** — Enter Mermaid syntax and click Render to instantly preview the diagram in the task pane
-- **Insert into Excel** — Insert the previewed image into the active sheet with one click
-- **PNG / JPEG output** — Choose your output format and download the image directly
+- **Real-time preview** — The diagram is rendered automatically in the task pane as you type Mermaid syntax
+- **Insert into Excel** — Insert the previewed image at the active cell with one click
+- **Re-editing** — The Mermaid code is stored in the inserted image's alt text; pick it from [Sheet diagram] to edit and replace it
+- **PNG / JPEG / SVG output** — Choose your output format and download the image directly
 - **Wide diagram support** — All diagram types supported by [Mermaid](https://github.com/mermaid-js/mermaid) are available, including flowcharts, sequence diagrams, class diagrams, ER diagrams, and Gantt charts
 - **Privacy-friendly** — All processing is completed within the task pane; no data is sent to external servers
 
@@ -18,15 +19,20 @@ Quickly draw flowcharts, sequence diagrams, ER diagrams, and more using text-bas
 
 ```
 MermaidForExcel/
-  build.js                 ← esbuild build script (serve / watch / build)
+  build.js                 ← esbuild build script (build / dev / watch / serve)
   manifest.xml             ← Office Add-in manifest
   package.json
   tsconfig.json
   assets/                  ← Icon directory
+  scripts/sync-version.js  ← Syncs the package.json version to the manifest and installer
   src/taskpane/
-    taskpane.html
-    taskpane.ts
-  dist/                    ← Build output
+    taskpane.html / .css
+    taskpane.ts            ← UI wiring (entry point)
+    render.ts              ← Mermaid rendering
+    image.ts               ← SVG → PNG/JPEG conversion
+    excelShapes.ts         ← Excel shape insert / replace / list
+    splitter.ts            ← Editor / preview splitter
+  dist/                    ← Build output (not committed; deployed by GitHub Actions)
 ```
 
 ## Setup
@@ -42,15 +48,17 @@ npx office-addin-dev-certs install
 ## Starting the Development Server
 
 ```bash
-npm start
+npm run dev-server
 # → https://localhost:3000/taskpane.html
 ```
+
+To sideload and debug, run `npm start` while the development server is running.
 
 ## Registering the Add-in in Excel
 
 1. Open Excel
 2. **[Insert]** → **[Add-ins]** → **[My Add-ins]** → **[Upload My Add-in]**
-3. Select `dist/manifest.xml`
+3. Select `dist/manifest.xml` (built with `npm run build:dev` when using the development server)
 
 An **[Open Mermaid]** button will be added to the Home tab.
 
@@ -58,13 +66,18 @@ An **[Open Mermaid]** button will be added to the Home tab.
 
 | Command | Description |
 |---|---|
-| `npm start` | Build + start HTTPS server (port 3000) |
-| `npm run build` | One-time build to `dist/` |
+| `npm run dev-server` | Build + start HTTPS server (port 3000) |
+| `npm start` | Sideload into Excel and start debugging |
+| `npm stop` | Stop debugging |
+| `npm run build` | One-time build to `dist/` (manifest with production URLs) |
+| `npm run build:dev` | One-time build to `dist/` (manifest with `https://localhost:3000`) |
 | `npm run watch` | Watch for file changes and auto-rebuild |
+| `npm run typecheck` | Type-check with `tsc` |
+| `npm version <patch\|minor\|major>` | Bump the version and sync it to `manifest.xml` and the installer |
 
 ## Replacing Icons
 
-Replace `assets/icon-{16,32,80}.png` with your own PNG images.  
+Replace `assets/icon-{16,32,64,80}.png` with your own PNG images.  
 
 ## License
 

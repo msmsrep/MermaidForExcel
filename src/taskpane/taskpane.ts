@@ -1,104 +1,83 @@
-import mermaid from "mermaid";
+import {
+  type DiagramItem,
+  insertImageShape,
+  insertSvgShape,
+  isSvgInsertSupported,
+  listDiagrams,
+  onSheetActivated,
+} from "./excelShapes";
+import { type ImageFormat, serializeSvg, svgToDataUrl, svgToRaster } from "./image";
+import { initMermaid, renderMermaid } from "./render";
+import { initSplitter } from "./splitter";
+import { byId, errorMessage } from "./util";
 
-// https://github.com/mermaid-js/mermaid-cli/issues/112
+const RENDER_DEBOUNCE_MS = 250;
+const PREVIEW_HINT_HTML = '<span class="hint">Type Mermaid code</span>';
+const FILE_EXTENSIONS: Record<ImageFormat, string> = {
+  png: "png",
+  jpeg: "jpg",
+  svg: "svg",
+};
+
 Office.onReady(() => {
-    mermaid.initialize({
-    startOnLoad: false,
-    theme: "default",
-    htmlLabels: false,
-    flowchart: {
-      useMaxWidth: false,
-      htmlLabels: false,
-    },
-  });
+  initMermaid();
 
-  const input = document.getElementById("mermaid-input") as HTMLTextAreaElement;
-  const preview = document.getElementById("preview") as HTMLDivElement;
-  const errDiv = document.getElementById("error") as HTMLDivElement;
-  const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
-  const downloadBtn = document.getElementById(
-    "download-btn",
-  ) as HTMLButtonElement;
-  const sheetSvgSelect = document.getElementById(
-    "sheet-svg-select",
-  ) as HTMLSelectElement;
-  const formatSelect = document.getElementById(
-    "format-select",
-  ) as HTMLSelectElement;
-  const previewHintHtml = '<span class="hint">Type Mermaid code</span>';
+  const input = byId<HTMLTextAreaElement>("mermaid-input");
+  const splitter = byId<HTMLDivElement>("splitter");
+  const preview = byId<HTMLDivElement>("preview");
+  const errDiv = byId<HTMLDivElement>("error");
+  const insertBtn = byId<HTMLButtonElement>("insert-btn");
+  const downloadBtn = byId<HTMLButtonElement>("download-btn");
+  const diagramSelect = byId<HTMLSelectElement>("sheet-diagram-select");
+  const formatSelect = byId<HTMLSelectElement>("format-select");
+
   let renderDebounceTimer: number | undefined;
   let renderRequestId = 0;
+  let diagramItems: DiagramItem[] = [];
 
-  let selectedFormat: "png" | "jpeg" | "svg" = "png";
-  let sheetSvgItems: Array<{
-    id: string;
-    name: string;
-    altTextDescription: string;
-  }> = [];
+  const selectedFormat = () => formatSelect.value as ImageFormat;
 
-  formatSelect.addEventListener("change", () => {
-    selectedFormat = formatSelect.value as "png" | "jpeg" | "svg";
-  });
+  function setActionsEnabled(enabled: boolean) {
+    insertBtn.disabled = !enabled;
+    downloadBtn.disabled = !enabled;
+  }
 
-  function updateSheetSvgOptions(
-    items: Array<{ id: string; name: string; altTextDescription: string }>,
-    selectedId = "",
-  ) {
-    sheetSvgItems = items;
-    sheetSvgSelect.innerHTML = "";
+  // ── Sheet diagram dropdown ─────────────────────────────────────────────────
+  function updateDiagramOptions(items: DiagramItem[], selectedId = "") {
+    diagramItems = items;
+    diagramSelect.innerHTML = "";
 
     const defaultOption = document.createElement("option");
     defaultOption.value = "";
-    defaultOption.textContent = "(No SVG selected)";
-    sheetSvgSelect.appendChild(defaultOption);
+    defaultOption.textContent = "(No diagram selected)";
+    diagramSelect.appendChild(defaultOption);
 
     for (const item of items) {
       const option = document.createElement("option");
       option.value = item.id;
       option.textContent = item.name;
-      sheetSvgSelect.appendChild(option);
+      diagramSelect.appendChild(option);
     }
 
-    sheetSvgSelect.value =
+    diagramSelect.value =
       selectedId && items.some((item) => item.id === selectedId) ? selectedId : "";
   }
 
-  async function loadSheetSvgItems() {
-    const selectedId = sheetSvgSelect.value;
+  async function refreshDiagramOptions(selectedId = diagramSelect.value) {
     try {
-      const items = await Excel.run(async (ctx) => {
-        const shapes = ctx.workbook.worksheets.getActiveWorksheet().shapes;
-        shapes.load("items/id,items/name,items/type,items/altTextDescription");
-        await ctx.sync();
-
-        const imageShapes = shapes.items.filter((shape) => shape.type === "Image");
-        for (const shape of imageShapes) {
-          shape.image.load("format");
-        }
-        await ctx.sync();
-
-        return imageShapes
-          .filter((shape) => shape.image.format === "SVG")
-          .map((shape) => ({
-            id: shape.id,
-            name: shape.name,
-            altTextDescription: shape.altTextDescription ?? "",
-          }));
-      });
-
-      updateSheetSvgOptions(items, selectedId);
+      updateDiagramOptions(await listDiagrams(), selectedId);
     } catch {
       // Ignore load failures so the main render/insert flow remains available.
-      updateSheetSvgOptions([], "");
+      updateDiagramOptions([], "");
     }
   }
 
-  sheetSvgSelect.addEventListener("focus", () => {
-    void loadSheetSvgItems();
+  diagramSelect.addEventListener("focus", () => {
+    void refreshDiagramOptions();
   });
 
-  sheetSvgSelect.addEventListener("change", () => {
-    const selected = sheetSvgItems.find((item) => item.id === sheetSvgSelect.value);
+  diagramSelect.addEventListener("change", () => {
+    const selected = diagramItems.find((item) => item.id === diagramSelect.value);
     if (!selected) {
       return;
     }
@@ -106,315 +85,99 @@ Office.onReady(() => {
     void renderPreview();
   });
 
+  // Reset dropdown when the active sheet changes.
+  onSheetActivated(() => updateDiagramOptions([], "")).catch(() => {/* ignore */});
+
+  // ── Preview ────────────────────────────────────────────────────────────────
   async function renderPreview() {
     const requestId = ++renderRequestId;
     errDiv.textContent = "";
-    insertBtn.disabled = true;
-    downloadBtn.disabled = true;
+    setActionsEnabled(false);
 
     const code = input.value.trim();
     if (!code) {
-      preview.innerHTML = previewHintHtml;
+      preview.innerHTML = PREVIEW_HINT_HTML;
       return;
     }
 
     try {
-      // Remove element with the same ID to avoid errors
-      document.getElementById("mermaid-graph")?.remove();
-
-      const { svg } = await mermaid.render("mermaid-graph", code);
+      const svg = await renderMermaid(code);
       if (requestId !== renderRequestId) return;
       preview.innerHTML = svg;
-      insertBtn.disabled = false;
-      downloadBtn.disabled = false;
+      setActionsEnabled(true);
     } catch (e) {
       if (requestId !== renderRequestId) return;
       preview.innerHTML = "";
-      insertBtn.disabled = true;
-      downloadBtn.disabled = true;
-      errDiv.textContent = `Render error: ${e instanceof Error ? e.message : String(e)}`;
+      errDiv.textContent = `Render error: ${errorMessage(e)}`;
     }
   }
 
   input.addEventListener("input", () => {
-    if (renderDebounceTimer !== undefined) {
-      window.clearTimeout(renderDebounceTimer);
-    }
+    window.clearTimeout(renderDebounceTimer);
     renderDebounceTimer = window.setTimeout(() => {
       void renderPreview();
-    }, 250);
+    }, RENDER_DEBOUNCE_MS);
+  });
+
+  initSplitter(splitter, input, preview);
+
+  // ── Insert / Download ──────────────────────────────────────────────────────
+  /** Runs a button's action on the rendered SVG and reports any failure. */
+  function bindSvgAction(
+    button: HTMLButtonElement,
+    errorPrefix: string,
+    action: (svgEl: SVGSVGElement) => Promise<void>,
+  ) {
+    button.addEventListener("click", async () => {
+      errDiv.textContent = "";
+      const svgEl = preview.querySelector<SVGSVGElement>("svg");
+      if (!svgEl) {
+        errDiv.textContent = "Please render first";
+        return;
+      }
+      try {
+        await action(svgEl);
+      } catch (e) {
+        errDiv.textContent = `${errorPrefix}: ${errorMessage(e)}`;
+      }
+    });
+  }
+
+  bindSvgAction(downloadBtn, "Download error", async (svgEl) => {
+    const format = selectedFormat();
+    const dataUrl =
+      format === "svg"
+        ? svgToDataUrl(serializeSvg(svgEl))
+        : `data:image/${format};base64,` + (await svgToRaster(svgEl, format)).base64;
+
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = `diagram.${FILE_EXTENSIONS[format]}`;
+    a.click();
+  });
+
+  bindSvgAction(insertBtn, "Insert error", async (svgEl) => {
+    const format = selectedFormat();
+    const mermaidCode = input.value.trim();
+    const replaceId = diagramSelect.value || undefined;
+    let insertedShapeId: string;
+
+    if (format === "svg") {
+      if (!isSvgInsertSupported()) {
+        throw new Error(
+          "SVG insertion is not supported in this version of Excel. Use PNG or JPEG.",
+        );
+      }
+      insertedShapeId = await insertSvgShape(serializeSvg(svgEl), mermaidCode, replaceId);
+    } else {
+      const image = await svgToRaster(svgEl, format);
+      insertedShapeId = await insertImageShape(image, mermaidCode, replaceId);
+    }
+
+    await refreshDiagramOptions(insertedShapeId);
   });
 
   // Render initial Mermaid code when the task pane opens.
   void renderPreview();
-  void loadSheetSvgItems();
-
-  // Reset dropdown when the active sheet changes.
-  Excel.run(async (ctx) => {
-    ctx.workbook.worksheets.onActivated.add(() => {
-      updateSheetSvgOptions([], "");
-      return Promise.resolve();
-    });
-    await ctx.sync();
-  }).catch(() => {/* ignore */});
-
-  async function applyInsertedShapeMetadata(
-    mermaidCode: string,
-    position?: { left: number; top: number },
-    shapeName?: string,
-  ): Promise<string> {
-    return Excel.run(async (ctx) => {
-      const shapes = ctx.workbook.worksheets.getActiveWorksheet().shapes;
-      const countResult = shapes.getCount();
-      await ctx.sync();
-      if (countResult.value <= 0) {
-        throw new Error("No inserted shape found.");
-      }
-
-      const lastShape = shapes.getItemAt(countResult.value - 1);
-      if (position) {
-        lastShape.left = position.left;
-        lastShape.top = position.top;
-      }
-      if (shapeName) {
-        lastShape.name = shapeName;
-      }
-      lastShape.altTextTitle = "Mermaid Diagram";
-      lastShape.altTextDescription = mermaidCode;
-      lastShape.load("id");
-      await ctx.sync();
-      return lastShape.id;
-    });
-  }
-
-  async function replaceSvgShape(
-    targetShapeId: string,
-    svgStr: string,
-    mermaidCode: string,
-  ): Promise<string> {
-    const { position, shapeName } = await Excel.run(async (ctx) => {
-      const target = ctx.workbook.worksheets
-        .getActiveWorksheet()
-        .shapes.getItemOrNullObject(targetShapeId);
-      target.load(["isNullObject", "left", "top", "name"]);
-      await ctx.sync();
-      if (target.isNullObject) {
-        throw new Error("Selected SVG no longer exists.");
-      }
-
-      const result = {
-        position: { left: target.left, top: target.top },
-        shapeName: target.name,
-      };
-      target.delete();
-      await ctx.sync();
-      return result;
-    });
-
-    await insertSvgToSelection(svgStr);
-    return applyInsertedShapeMetadata(mermaidCode, position, shapeName);
-  }
-
-  async function replaceImageShape(
-    targetShapeId: string,
-    base64: string,
-    mermaidCode: string,
-  ): Promise<string> {
-    return Excel.run(async (ctx) => {
-      const sheet = ctx.workbook.worksheets.getActiveWorksheet();
-      const target = sheet.shapes.getItemOrNullObject(targetShapeId);
-      target.load(["isNullObject", "left", "top", "name"]);
-      await ctx.sync();
-      if (target.isNullObject) {
-        throw new Error("Selected SVG no longer exists.");
-      }
-
-      const shape = sheet.shapes.addImage(base64);
-      shape.name = target.name;
-      shape.left = target.left;
-      shape.top = target.top;
-      shape.altTextTitle = "Mermaid Diagram";
-      shape.altTextDescription = mermaidCode;
-      shape.load("id");
-
-      target.delete();
-      await ctx.sync();
-      return shape.id;
-    });
-  }
-
-  downloadBtn.addEventListener("click", async () => {
-    errDiv.textContent = "";
-    const svgEl = preview.querySelector<SVGSVGElement>("svg");
-    if (!svgEl) {
-      errDiv.textContent = "Please render first";
-      return;
-    }
-
-    try {
-      let dataUrl: string;
-      let filename: string;
-      if (selectedFormat === "jpeg") {
-        const base64 = await svgToBase64Jpeg(svgEl);
-        dataUrl = "data:image/jpeg;base64," + base64;
-        filename = "diagram.jpg";
-      } else if (selectedFormat === "svg") {
-        const svgStr = new XMLSerializer().serializeToString(svgEl);
-        dataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
-        filename = "diagram.svg";
-      } else {
-        const base64 = await svgToBase64Png(svgEl);
-        dataUrl = "data:image/png;base64," + base64;
-        filename = "diagram.png";
-      }
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = filename;
-      a.click();
-    } catch (e) {
-      errDiv.textContent = `Download error: ${e instanceof Error ? e.message : String(e)}`;
-    }
-  });
-
-  insertBtn.addEventListener("click", async () => {
-    errDiv.textContent = "";
-    const svgEl = preview.querySelector<SVGSVGElement>("svg");
-    if (!svgEl) {
-      errDiv.textContent = "Please render first";
-      return;
-    }
-
-    try {
-      const mermaidCode = input.value.trim();
-      let insertedShapeId = "";
-      const replacementTargetId = sheetSvgSelect.value;
-
-      if (selectedFormat === "svg") {
-        const svgStr = new XMLSerializer().serializeToString(svgEl);
-        if (replacementTargetId) {
-          insertedShapeId = await replaceSvgShape(
-            replacementTargetId,
-            svgStr,
-            mermaidCode,
-          );
-        } else {
-          await insertSvgToSelection(svgStr);
-          insertedShapeId = await applyInsertedShapeMetadata(mermaidCode);
-        }
-      } else {
-        const base64 =
-          selectedFormat === "jpeg"
-            ? await svgToBase64Jpeg(svgEl)
-            : await svgToBase64Png(svgEl);
-        if (replacementTargetId) {
-          insertedShapeId = await replaceImageShape(
-            replacementTargetId,
-            base64,
-            mermaidCode,
-          );
-        } else {
-          insertedShapeId = await Excel.run(async (ctx) => {
-            const sheet = ctx.workbook.worksheets.getActiveWorksheet();
-            const activeCell = ctx.workbook.getActiveCell();
-            activeCell.load(["left", "top"]);
-            await ctx.sync();
-
-            const shape = sheet.shapes.addImage(base64);
-            shape.left = activeCell.left;
-            shape.top = activeCell.top;
-            shape.altTextTitle = "Mermaid Diagram";
-            shape.altTextDescription = mermaidCode;
-            shape.load("id");
-            await ctx.sync();
-            return shape.id;
-          });
-        }
-      }
-
-      await loadSheetSvgItems();
-      if (insertedShapeId) {
-        sheetSvgSelect.value = insertedShapeId;
-      }
-    } catch (e) {
-      errDiv.textContent = `Insert error: ${e instanceof Error ? e.message : String(e)}`;
-    }
-  });
+  void refreshDiagramOptions();
 });
-
-function insertSvgToSelection(svgStr: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    Office.context.document.setSelectedDataAsync(
-      svgStr,
-      { coercionType: Office.CoercionType.XmlSvg },
-      (asyncResult) => {
-        if (asyncResult.status === Office.AsyncResultStatus.Failed) {
-          reject(new Error(asyncResult.error.message));
-        } else {
-          resolve();
-        }
-      },
-    );
-  });
-}
-
-/**
- * Converts an SVG element to a base64 PNG string (without data: prefix).
- * Uses Canvas to produce the PNG format required by Excel's addImage API.
- */
-async function svgToBase64Png(svgEl: SVGSVGElement): Promise<string> {
-  const svgStr = new XMLSerializer().serializeToString(svgEl);
-  const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
-
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = url;
-  });
-
-  const vb = svgEl.viewBox?.baseVal;
-  const w = (vb && vb.width > 0 ? vb.width : img.naturalWidth) || 800;
-  const h = (vb && vb.height > 0 ? vb.height : img.naturalHeight) || 600;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
-
-  return canvas.toDataURL("image/png").replace("data:image/png;base64,", "");
-}
-
-/**
- * Converts an SVG element to a base64 JPEG string (without data: prefix).
- */
-async function svgToBase64Jpeg(
-  svgEl: SVGSVGElement,
-  quality = 0.92,
-): Promise<string> {
-  const svgStr = new XMLSerializer().serializeToString(svgEl);
-  const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
-
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = url;
-  });
-
-  const vb = svgEl.viewBox?.baseVal;
-  const w = (vb && vb.width > 0 ? vb.width : img.naturalWidth) || 800;
-  const h = (vb && vb.height > 0 ? vb.height : img.naturalHeight) || 600;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx2d = canvas.getContext("2d")!;
-  // Fill with white background since JPEG does not support transparency
-  ctx2d.fillStyle = "#ffffff";
-  ctx2d.fillRect(0, 0, w, h);
-  ctx2d.drawImage(img, 0, 0, w, h);
-
-  return canvas
-    .toDataURL("image/jpeg", quality)
-    .replace("data:image/jpeg;base64,", "");
-}

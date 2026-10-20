@@ -6,176 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Mermaid for Excel</title>
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-    <style>
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-
-      body {
-        font-family: "Segoe UI", sans-serif;
-        font-size: 14px;
-        background: #fff;
-        color: #323130;
-        display: flex;
-        flex-direction: column;
-        min-height: 100dvh;
-        padding: 12px;
-        gap: 8px;
-        overflow-y: auto;
-      }
-
-      h1 {
-        font-size: 16px;
-        font-weight: 600;
-        color: #0078d4;
-      }
-
-      .field-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: #323130;
-      }
-
-      #sheet-svg-select {
-        width: 100%;
-        padding: 6px 8px;
-        border: 1px solid #c7c7c7;
-        border-radius: 4px;
-        background: #fff;
-        color: #323130;
-        font-size: 12px;
-      }
-      #sheet-svg-select:focus {
-        outline: none;
-        border-color: #0078d4;
-      }
-
-      textarea {
-        width: 100%;
-        height: 100px;
-        padding: 8px;
-        border: 1px solid #c7c7c7;
-        border-radius: 4px;
-        font-family: "Consolas", "Courier New", monospace;
-        font-size: 12px;
-        resize: vertical;
-        flex-shrink: 0;
-      }
-      textarea:focus {
-        outline: none;
-        border-color: #0078d4;
-      }
-
-      .buttons {
-        display: flex;
-        gap: 8px;
-        flex-shrink: 0;
-      }
-
-      button {
-        flex: 1;
-        padding: 2px 4px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 8px;
-        font-weight: 600;
-        transition: background 0.1s;
-      }
-      #insert-btn {
-        background: #107c10;
-        color: #fff;
-      }
-      #insert-btn:hover {
-        background: #0b5e0b;
-      }
-      #insert-btn:disabled {
-        background: #a8a8a8;
-        cursor: not-allowed;
-      }
-      #download-btn {
-        background: #5c2d91;
-        color: #fff;
-      }
-      #download-btn:hover {
-        background: #451f6e;
-      }
-      #download-btn:disabled {
-        background: #a8a8a8;
-        cursor: not-allowed;
-      }
-
-      #format-select {
-        padding: 4px 6px;
-        border: 1px solid #c7c7c7;
-        border-radius: 4px 0 0 4px;
-        background: #f3f2f1;
-        color: #323130;
-        font-size: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        flex-shrink: 0;
-        height: 100%;
-      }
-      #format-select:focus {
-        outline: none;
-        border-color: #0078d4;
-      }
-      .insert-group {
-        display: flex;
-        flex: 1;
-      }
-      .insert-group #format-select {
-        border-right: none;
-      }
-      .insert-group #insert-btn {
-        border-radius: 0 4px 4px 0;
-      }
-
-      #error {
-        color: #a4262c;
-        font-size: 12px;
-        min-height: 1.2em;
-        flex-shrink: 0;
-      }
-
-      #preview {
-        min-height: 200px;
-        overflow: auto;
-        border: 1px solid #e1e1e1;
-        border-radius: 4px;
-        padding: 8px;
-        background: #faf9f8;
-        display: flex;
-        /* align-items: center; */
-        justify-content: center;
-        align-items: flex-start;
-        /* justify-content: flex-start; */
-      }
-      #preview svg {
-        max-width: 100%;
-        height: auto;
-      }
-      #preview .hint {
-        color: #8a8886;
-        font-size: 12px;
-      }
-    </style>
+    <link rel="stylesheet" href="taskpane.css" />
   </head>
   <body>
     <h1>Mermaid for Excel</h1>
 
-    <label class="field-label" for="sheet-svg-select">Sheet SVG</label>
-    <select id="sheet-svg-select" aria-label="Select SVG in active sheet">
-      <option value="">(No SVG selected)</option>
+    <label class="field-label" for="sheet-diagram-select">Sheet diagram</label>
+    <select id="sheet-diagram-select" aria-label="Select Mermaid diagram in active sheet">
+      <option value="">(No diagram selected)</option>
     </select>
 
-    <label class="field-label" for="mermaid-input"></label>
-    <textarea id="mermaid-input" spellcheck="false" placeholder="graph TD&#10;A-->B">
+    <textarea
+      id="mermaid-input"
+      aria-label="Mermaid code"
+      spellcheck="false"
+      placeholder="graph TD&#10;A-->B"
+    >
 graph LR
     A[Start] --> B{Condition}
     B -->|Yes| C[Process A]
@@ -183,6 +29,13 @@ graph LR
     C --> E[End]
     D --> E</textarea
     >
+    <div
+      id="splitter"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize editor"
+      tabindex="0"
+    ></div>
 
     <div class="buttons">
       <div class="insert-group">
@@ -191,16 +44,14 @@ graph LR
           <option value="jpeg">JPEG</option>
           <option value="svg">SVG</option>
         </select>
-        <button id="insert-btn" disabled>Insert to Excel</button>
+        <button id="insert-btn" class="action-btn" disabled>Insert to Excel</button>
       </div>
-      <button id="download-btn" disabled>Download</button>
+      <button id="download-btn" class="action-btn" disabled>Download</button>
     </div>
 
     <div id="error"></div>
 
-    <div id="preview">
-      <span class="hint">Type Mermaid code</span>
-    </div>
+    <div id="preview"></div>
 
     <script src="taskpane.js"></script>
   </body>

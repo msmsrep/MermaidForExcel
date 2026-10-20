@@ -5,14 +5,15 @@
 
 Mermaid記法でダイアグラムを作成し、Excelのシートに画像として挿入するOfficeアドインです。
 
-テキストベースの記法でフローチャート・シーケンス図・ER図などを素早く描き、PNG/JPEG画像として現在のシートに貼り付けられます。
+テキストベースの記法でフローチャート・シーケンス図・ER図などを素早く描き、PNG/JPEG/SVG画像として現在のシートに貼り付けられます。
 ローカル完結処理のため、入力内容が外部に送信されることはありません。
 
 ## 主な機能
 
-- **リアルタイムプレビュー** — Mermaid記法を入力してレンダリングボタンを押すと、タスクペイン内でダイアグラムを即座に確認できます
-- **Excelへの挿入** — プレビューした画像をワンクリックでアクティブシートに挿入します
-- **PNG/JPEG出力対応** — 保存形式を選択してダウンロードすることもできます
+- **リアルタイムプレビュー** — Mermaid記法を入力すると、タスクペイン内で自動的にダイアグラムが描画されます
+- **Excelへの挿入** — プレビューした画像をワンクリックでアクティブセルの位置に挿入します
+- **再編集** — 挿入した図の Mermaid コードは代替テキストに保存され、[Sheet diagram] から選んで編集・差し替えできます
+- **PNG/JPEG/SVG出力対応** — 保存形式を選択してダウンロードすることもできます
 - **多様なダイアグラム種別** — フローチャート、シーケンス図、クラス図、ER図、ガントチャートなど[Mermaid](https://github.com/mermaid-js/mermaid)がサポートするすべての記法が利用可能です
 - **プライバシー保護** — すべての処理はタスクペイン内で完結し、外部サーバーへのデータ送信はありません
 
@@ -20,15 +21,20 @@ Mermaid記法でダイアグラムを作成し、Excelのシートに画像と�
 
 ```
 MermaidForExcel/
-  build.js                 ← esbuild ビルドスクリプト（serve / watch / build）
+  build.js                 ← esbuild ビルドスクリプト（build / dev / watch / serve）
   manifest.xml             ← Office アドインマニフェスト
   package.json
   tsconfig.json
   assets/                  ← アイコン置き場
+  scripts/sync-version.js  ← package.json のバージョンをマニフェストとインストーラに反映
   src/taskpane/
-    taskpane.html
-    taskpane.ts
-  dist/                    ← ビルド成果物
+    taskpane.html / .css
+    taskpane.ts            ← UI の結線（エントリポイント）
+    render.ts              ← Mermaid のレンダリング
+    image.ts               ← SVG → PNG/JPEG 変換
+    excelShapes.ts         ← Excel 図形の挿入・差し替え・一覧取得
+    splitter.ts            ← 入力欄とプレビューのスプリッタ
+  dist/                    ← ビルド成果物（コミットしない。GitHub Actions でデプロイ）
 ```
 
 ## セットアップ
@@ -44,15 +50,17 @@ npx office-addin-dev-certs install
 ## 開発サーバの起動
 
 ```bash
-npm start
+npm run dev-server
 # → https://localhost:3000/taskpane.html
 ```
+
+サイドロードしてデバッグする場合は、開発サーバを起動したまま `npm start` を実行します。
 
 ## Excel へのアドイン登録
 
 1. Excel を起動
 2. **[挿入]** → **[アドイン]** → **[個人用アドイン]** → **[アドインをアップロード]**
-3. `dist/manifest.xml` を選択
+3. `dist/manifest.xml` を選択（開発サーバを使う場合は `npm run build:dev` 後のもの）
 
 ホームタブに **[Open Mermaid]** ボタンが追加されます。
 
@@ -60,13 +68,18 @@ npm start
 
 | コマンド | 説明 |
 |---|---|
-| `npm start` | ビルド + HTTPS サーバ起動（ポート 3000） |
-| `npm run build` | `dist/` への一回限りのビルド |
+| `npm run dev-server` | ビルド + HTTPS サーバ起動（ポート 3000） |
+| `npm start` | Excel にサイドロードしてデバッグ起動 |
+| `npm stop` | デバッグ終了 |
+| `npm run build` | `dist/` への一回限りのビルド（本番 URL のマニフェスト） |
+| `npm run build:dev` | `dist/` への一回限りのビルド（`https://localhost:3000` のマニフェスト） |
 | `npm run watch` | ファイル変更を監視して自動リビルド |
+| `npm run typecheck` | `tsc` で型チェック |
+| `npm version <patch\|minor\|major>` | バージョンを上げて `manifest.xml` とインストーラに反映 |
 
 ## アイコンの差し替え
 
-`assets/icon-{16,32,80}.png` を任意の PNG 画像に置き換えてください。 
+`assets/icon-{16,32,64,80}.png` を任意の PNG 画像に置き換えてください。 
 
 
 ## ライセンス
