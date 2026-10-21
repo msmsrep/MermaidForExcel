@@ -11,11 +11,50 @@ export type ShapeState = {
   top: number;
   width: number;
   height: number;
+  lockAspectRatio?: boolean;
   base64?: string;
+  geometricShapeType?: string;
+  fill?: FillState;
+  lineFormat?: LineFormatState;
+  textFrame?: TextFrameState;
+  line?: LineState;
+  /** IDs of the shapes in a group. */
+  members?: string[];
+};
+
+export type FillState = { color?: string; transparency?: number; cleared?: boolean };
+export type LineFormatState = { color?: string; weight?: number; dashStyle?: string; visible?: boolean };
+export type TextFrameState = {
+  autoSizeSetting?: string;
+  leftMargin?: number;
+  rightMargin?: number;
+  topMargin?: number;
+  bottomMargin?: number;
+  horizontalAlignment?: string;
+  verticalAlignment?: string;
+  text?: string;
+  fontSize?: number;
+  fontColor?: string;
+};
+export type LineState = {
+  connectorType?: string;
+  begin: { left: number; top: number };
+  end: { left: number; top: number };
+  beginShape?: string;
+  beginSite?: number;
+  endShape?: string;
+  endSite?: number;
+  beginArrowheadStyle?: string;
+  endArrowheadStyle?: string;
 };
 
 /** Operation log entry; `batch` is the number of syncs completed before it. */
-export type Op = { op: "addImage" | "delete" | "setSelectedData"; id?: string; batch: number };
+export type Op = {
+  op: "addImage" | "delete" | "setSelectedData" | "addGeometricShape" | "addLine" | "addTextBox" | "addGroup";
+  id?: string;
+  batch: number;
+};
+
 
 /**
  * Minimal fake of the Excel / Office APIs used by excelShapes.ts. Property
@@ -39,6 +78,10 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
     ...s,
   }));
   const ops: Op[] = [];
+  /** Connection site counts reported by the fake, by geometric shape type. */
+  const siteCounts: Record<string, number> = { Rectangle: 4, Diamond: 4, Ellipse: 8 };
+  /** Every shape ever added, including grouped and deleted ones. */
+  const allShapes: ShapeState[] = [...shapes];
   const activeCell = { left: 10, top: 20 };
   const activatedHandlers: Array<() => unknown> = [];
   let syncCount = 0;
@@ -51,9 +94,49 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
   };
   let svgSupported = true;
 
+  function fillProxy(state: ShapeState) {
+    const fill = (state.fill ??= {});
+    return {
+      setSolidColor(color: string) { fill.color = color; },
+      clear() { fill.cleared = true; },
+      set transparency(v: number) { fill.transparency = v; },
+    };
+  }
+
+  function textFrameProxy(state: ShapeState) {
+    const frame = (state.textFrame ??= {});
+    return Object.assign(frame, {
+      textRange: {
+        set text(v: string) { frame.text = v; },
+        font: {
+          set size(v: number) { frame.fontSize = v; },
+          set color(v: string) { frame.fontColor = v; },
+        },
+      },
+    });
+  }
+
+  function lineProxy(line: LineState) {
+    return Object.assign(line, {
+      connectBeginShape(shape: { id: string }, site: number) {
+        line.beginShape = shape.id;
+        line.beginSite = site;
+      },
+      connectEndShape(shape: { id: string }, site: number) {
+        line.endShape = shape.id;
+        line.endSite = site;
+      },
+    });
+  }
+
   function shapeProxy(state: ShapeState) {
     return {
       get id() { return state.id; },
+      get connectionSiteCount() { return siteCounts[state.geometricShapeType ?? ""] ?? 0; },
+      get fill() { return fillProxy(state); },
+      get lineFormat() { return (state.lineFormat ??= {}); },
+      get textFrame() { return textFrameProxy(state); },
+      get line() { return lineProxy(state.line!); },
       get type() { return state.type; },
       get name() { return state.name; },
       set name(v: string) { state.name = v; },
@@ -69,6 +152,7 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
       set width(v: number) { state.width = v; },
       get height() { return state.height; },
       set height(v: number) { state.height = v; },
+      set lockAspectRatio(v: boolean) { state.lockAspectRatio = v; },
       isNullObject: false,
       load: vi.fn(),
       delete() {
@@ -106,7 +190,48 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
       ops.push({ op: "addImage", id: state.id, batch: syncCount });
       return shapeProxy(state);
     },
+    addGeometricShape(geometricShapeType: string) {
+      const state = addShape("GeometricShape", { geometricShapeType });
+      ops.push({ op: "addGeometricShape", id: state.id, batch: syncCount });
+      return shapeProxy(state);
+    },
+    addLine(startLeft: number, startTop: number, endLeft: number, endTop: number, connectorType?: string) {
+      const state = addShape("Line", {
+        line: { connectorType, begin: { left: startLeft, top: startTop }, end: { left: endLeft, top: endTop } },
+      });
+      ops.push({ op: "addLine", id: state.id, batch: syncCount });
+      return shapeProxy(state);
+    },
+    addTextBox(text?: string) {
+      const state = addShape("TextBox", { textFrame: { text } });
+      ops.push({ op: "addTextBox", id: state.id, batch: syncCount });
+      return shapeProxy(state);
+    },
+    /** Grouped shapes leave the sheet's top-level collection, as in Excel. */
+    addGroup(values: Array<string | { id: string }>) {
+      const members = values.map((v) => (typeof v === "string" ? v : v.id));
+      for (const id of members) {
+        const i = shapes.findIndex((s) => s.id === id);
+        if (i >= 0) shapes.splice(i, 1);
+      }
+      const state = addShape("Group", { members });
+      ops.push({ op: "addGroup", id: state.id, batch: syncCount });
+      return shapeProxy(state);
+    },
   };
+
+  function addShape(type: string, extra: Partial<ShapeState>): ShapeState {
+    const id = newId();
+    const state: ShapeState = {
+      id, name: `Default ${id}`, type,
+      altTextTitle: "", altTextDescription: "",
+      left: 0, top: 0, width: 50, height: 50,
+      ...extra,
+    };
+    shapes.push(state);
+    allShapes.push(state);
+    return state;
+  }
 
   const ctx = {
     workbook: {
@@ -159,7 +284,9 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
     Office,
     ctx,
     shapes,
+    allShapes,
     ops,
+    siteCounts,
     activeCell,
     svgInsert,
     activatedHandlers,

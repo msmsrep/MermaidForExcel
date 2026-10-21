@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mermaid = vi.hoisted(() => ({ initialize: vi.fn(), render: vi.fn() }));
+const mermaid = vi.hoisted(() => ({
+  initialize: vi.fn(),
+  render: vi.fn(),
+  mermaidAPI: { getDiagramFromText: vi.fn() },
+}));
 vi.mock("mermaid", () => ({ default: mermaid }));
 
-import { initMermaid, renderMermaid } from "../src/taskpane/render";
+import { getFlowchartData, initMermaid, renderMermaid } from "../src/taskpane/render";
 
 beforeEach(() => {
   mermaid.initialize.mockReset();
   mermaid.render.mockReset();
+  mermaid.mermaidAPI.getDiagramFromText.mockReset();
   document.body.innerHTML = "";
 });
 
@@ -45,5 +50,28 @@ describe("renderMermaid", () => {
   it("propagates render errors", async () => {
     mermaid.render.mockRejectedValue(new Error("Parse error on line 1"));
     await expect(renderMermaid("bad")).rejects.toThrow("Parse error on line 1");
+  });
+});
+
+describe("getFlowchartData", () => {
+  const nodes = [{ id: "A", shape: "squareRect", isGroup: false, domId: "flowchart-A-0" }];
+  const edges = [{ id: "L_A_B_0", start: "A", end: "B" }];
+
+  it.each(["flowchart-v2", "flowchart", "flowchart-elk"])("returns the nodes and edges of a %s diagram", async (type) => {
+    const getData = vi.fn(() => ({ nodes, edges, config: {} }));
+    mermaid.mermaidAPI.getDiagramFromText.mockResolvedValue({ type, db: { getData } });
+
+    expect(await getFlowchartData("graph LR\nA-->B")).toEqual({ nodes, edges });
+    expect(mermaid.mermaidAPI.getDiagramFromText).toHaveBeenCalledWith("graph LR\nA-->B");
+  });
+
+  it("returns null for other diagram types", async () => {
+    mermaid.mermaidAPI.getDiagramFromText.mockResolvedValue({ type: "pie", db: {} });
+    expect(await getFlowchartData("pie")).toBeNull();
+  });
+
+  it("propagates parse errors", async () => {
+    mermaid.mermaidAPI.getDiagramFromText.mockRejectedValue(new Error("Parse error"));
+    await expect(getFlowchartData("bad")).rejects.toThrow("Parse error");
   });
 });

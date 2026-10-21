@@ -9,9 +9,13 @@ const m = vi.hoisted(() => ({
   isSvgInsertSupported: vi.fn(),
   insertImageShape: vi.fn(),
   insertSvgShape: vi.fn(),
+  insertNativeShapes: vi.fn(),
   initMermaid: vi.fn(),
   renderMermaid: vi.fn(),
+  getFlowchartData: vi.fn(),
   svgToRaster: vi.fn(),
+  toOfficeSvg: vi.fn(),
+  extractFlowchart: vi.fn(),
 }));
 
 vi.mock("../src/taskpane/excelShapes", () => ({
@@ -20,11 +24,15 @@ vi.mock("../src/taskpane/excelShapes", () => ({
   isSvgInsertSupported: m.isSvgInsertSupported,
   insertImageShape: m.insertImageShape,
   insertSvgShape: m.insertSvgShape,
+  insertNativeShapes: m.insertNativeShapes,
 }));
 vi.mock("../src/taskpane/render", () => ({
   initMermaid: m.initMermaid,
   renderMermaid: m.renderMermaid,
+  getFlowchartData: m.getFlowchartData,
 }));
+vi.mock("../src/taskpane/officeSvg", () => ({ toOfficeSvg: m.toOfficeSvg }));
+vi.mock("../src/taskpane/flowchartModel", () => ({ extractFlowchart: m.extractFlowchart }));
 vi.mock("../src/taskpane/image", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/taskpane/image")>()),
   svgToRaster: m.svgToRaster,
@@ -39,6 +47,9 @@ const INITIAL_CODE = `graph LR
     D --> E`;
 const SVG = '<svg id="mermaid-graph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><text>A</text></svg>';
 const RASTER = { base64: "B64", width: 10, height: 10 };
+const OFFICE_SVG = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+const FLOW_DATA = { nodes: [{ id: "A", isGroup: false }], edges: [] };
+const SHAPE_MODEL = { nodes: [], edges: [], labels: [] };
 const DIAGRAMS: DiagramItem[] = [
   { id: "id-1", name: "Diagram 1", altTextDescription: "graph TD\nX-->Y" },
   { id: "id-2", name: "Diagram 2", altTextDescription: "pie\n\"a\": 1" },
@@ -76,8 +87,9 @@ function selectDiagram(id: string) {
   diagramSelect().dispatchEvent(new Event("change"));
 }
 
-function setFormat(format: "png" | "jpeg" | "svg") {
+function setFormat(format: "png" | "jpeg" | "svg" | "svg-office" | "shapes") {
   formatSelect().value = format;
+  formatSelect().dispatchEvent(new Event("change"));
 }
 
 async function click(button: HTMLButtonElement) {
@@ -106,6 +118,10 @@ beforeEach(() => {
   m.svgToRaster.mockResolvedValue(RASTER);
   m.insertImageShape.mockResolvedValue("new-id");
   m.insertSvgShape.mockResolvedValue("new-svg-id");
+  m.insertNativeShapes.mockResolvedValue("new-group-id");
+  m.toOfficeSvg.mockReturnValue(OFFICE_SVG);
+  m.getFlowchartData.mockResolvedValue(FLOW_DATA);
+  m.extractFlowchart.mockReturnValue(SHAPE_MODEL);
 
   downloads = [];
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
@@ -219,6 +235,29 @@ describe("preview", () => {
     pending.resolve(SVG);
     await flush();
     expect(insertBtn().disabled).toBe(false);
+  });
+
+  it("disables the actions as soon as the input changes", async () => {
+    expect(insertBtn().disabled).toBe(false);
+    type("graph TD\nA-->B");
+    expect(insertBtn().disabled).toBe(true);
+    expect(downloadBtn().disabled).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(250);
+    expect(insertBtn().disabled).toBe(false);
+  });
+
+  it("discards a render in progress when the input changes", async () => {
+    const pending = deferred<string>();
+    m.renderMermaid.mockReturnValueOnce(pending.promise);
+    type("old");
+    await vi.advanceTimersByTimeAsync(250);
+    type("newer");
+    pending.resolve("<svg><text>old</text></svg>");
+    await flush();
+
+    expect(preview().textContent).not.toBe("old");
+    expect(insertBtn().disabled).toBe(true);
   });
 
   it("discards a stale render result that finishes after a newer one", async () => {
@@ -381,7 +420,7 @@ describe("insert", () => {
     await click(insertBtn());
 
     const svg = new XMLSerializer().serializeToString(preview().querySelector("svg")!);
-    expect(m.insertSvgShape).toHaveBeenCalledWith(svg, "pie\n\"a\": 1", "id-2");
+    expect(m.insertSvgShape).toHaveBeenCalledWith({ svg, width: 10, height: 10 }, "pie\n\"a\": 1", "id-2");
     expect(m.svgToRaster).not.toHaveBeenCalled();
   });
 
@@ -394,6 +433,51 @@ describe("insert", () => {
     expect(errorText()).toBe(
       "Insert error: SVG insertion is not supported in this version of Excel. Use PNG or JPEG.",
     );
+  });
+
+  it("inserts the shape-conversion SVG through the SVG path", async () => {
+    setFormat("svg-office");
+    selectDiagram("id-2");
+    await flush();
+    await click(insertBtn());
+
+    expect(m.toOfficeSvg).toHaveBeenCalledWith(preview().querySelector("svg"));
+    expect(m.insertSvgShape).toHaveBeenCalledWith(
+      { svg: OFFICE_SVG, width: 10, height: 10 },
+      "pie\n\"a\": 1",
+      "id-2",
+    );
+  });
+
+  it("refuses shape-conversion SVG insertion when ImageCoercion 1.2 is unsupported", async () => {
+    setFormat("svg-office");
+    m.isSvgInsertSupported.mockReturnValue(false);
+    await click(insertBtn());
+
+    expect(m.insertSvgShape).not.toHaveBeenCalled();
+    expect(errorText()).toContain("SVG insertion is not supported");
+  });
+
+  it("inserts native shapes built from the flowchart data and the preview", async () => {
+    setFormat("shapes");
+    selectDiagram("id-1");
+    await flush();
+    await click(insertBtn());
+
+    expect(m.getFlowchartData).toHaveBeenCalledWith("graph TD\nX-->Y");
+    expect(m.extractFlowchart).toHaveBeenCalledWith(preview().querySelector("svg"), FLOW_DATA);
+    expect(m.insertNativeShapes).toHaveBeenCalledWith(SHAPE_MODEL, "graph TD\nX-->Y", "id-1");
+    expect(m.insertSvgShape).not.toHaveBeenCalled();
+    expect(m.insertImageShape).not.toHaveBeenCalled();
+  });
+
+  it("refuses native shapes for diagrams other than flowcharts", async () => {
+    setFormat("shapes");
+    m.getFlowchartData.mockResolvedValue(null);
+    await click(insertBtn());
+
+    expect(m.insertNativeShapes).not.toHaveBeenCalled();
+    expect(errorText()).toBe("Insert error: Shapes format supports flowcharts only.");
   });
 
   it("reports insertion failures", async () => {
@@ -451,6 +535,43 @@ describe("download", () => {
       { href: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg), download: "diagram.svg" },
     ]);
     expect(m.svgToRaster).not.toHaveBeenCalled();
+  });
+
+  it("downloads the shape-conversion SVG as diagram.svg", async () => {
+    setFormat("svg-office");
+    await click(downloadBtn());
+
+    expect(m.toOfficeSvg).toHaveBeenCalledWith(preview().querySelector("svg"));
+    expect(downloads).toEqual([
+      { href: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(OFFICE_SVG), download: "diagram.svg" },
+    ]);
+  });
+
+  it("disables download for the Shapes format and re-enables it for other formats", async () => {
+    setFormat("shapes");
+    expect(downloadBtn().disabled).toBe(true);
+    expect(insertBtn().disabled).toBe(false);
+
+    setFormat("png");
+    expect(downloadBtn().disabled).toBe(false);
+  });
+
+  it("keeps download disabled for the Shapes format after rendering", async () => {
+    setFormat("shapes");
+    type("graph TD\nA-->B");
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(insertBtn().disabled).toBe(false);
+    expect(downloadBtn().disabled).toBe(true);
+  });
+
+  it("keeps the actions disabled when switching formats without a rendered preview", async () => {
+    type("");
+    await vi.advanceTimersByTimeAsync(250);
+    setFormat("svg");
+
+    expect(insertBtn().disabled).toBe(true);
+    expect(downloadBtn().disabled).toBe(true);
   });
 
   it("does not touch Excel", async () => {

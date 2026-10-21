@@ -8,9 +8,19 @@ export type RasterFormat = "png" | "jpeg";
 export type ImageFormat = RasterFormat | "svg";
 /** Base64 image (without data: prefix) and its display size in CSS pixels. */
 export type RasterImage = { base64: string; width: number; height: number };
+/** SVG markup and its display size in CSS pixels (0 when unknown). */
+export type SvgImage = { svg: string; width: number; height: number };
 
 export function serializeSvg(svgEl: SVGSVGElement): string {
   return new XMLSerializer().serializeToString(svgEl);
+}
+
+/** The SVG's size in CSS pixels from its viewBox, or 0 x 0 when it has none. */
+export function svgSize(svgEl: SVGSVGElement): { width: number; height: number } {
+  const vb = svgEl.viewBox?.baseVal;
+  return vb && vb.width > 0 && vb.height > 0
+    ? { width: vb.width, height: vb.height }
+    : { width: 0, height: 0 };
 }
 
 export function svgToDataUrl(svgStr: string): string {

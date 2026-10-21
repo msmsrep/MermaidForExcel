@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
-import { serializeSvg, svgToDataUrl, svgToRaster } from "../src/taskpane/image";
+import { serializeSvg, svgSize, svgToDataUrl, svgToRaster } from "../src/taskpane/image";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -155,5 +155,15 @@ describe("svgToRaster", () => {
     await expect(svgToRaster(makeSvg("0 0 100 50"), "png")).rejects.toThrow(
       "Failed to load SVG image.",
     );
+  });
+});
+
+describe("svgSize", () => {
+  it("returns the viewBox size", () => {
+    expect(svgSize(makeSvg("5 5 100 50"))).toEqual({ width: 100, height: 50 });
+  });
+
+  it("returns 0 x 0 without a viewBox", () => {
+    expect(svgSize(makeSvg())).toEqual({ width: 0, height: 0 });
   });
 });
