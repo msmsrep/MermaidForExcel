@@ -9,7 +9,7 @@
 
 ## 1. 概要
 
-Mermaid 記法のテキストからダイアグラムを生成し、Excel のアクティブシートへ画像（PNG / JPEG / SVG）として挿入する Office タスクペインアドイン。
+Mermaid 記法のテキストからダイアグラムを生成し、Excel のアクティブシートへ画像（PNG / JPEG / SVG）または Excel の図形として挿入する Office タスクペインアドイン。
 
 - レンダリングはタスクペイン内（ブラウザ）で完結し、入力内容を外部へ送信しない。
 - 挿入した図形の代替テキストに Mermaid コードを保持し、後から読み出して再編集・差し替えできる。
@@ -22,7 +22,7 @@ Mermaid 記法のテキストからダイアグラムを生成し、Excel のア
 | フォームファクタ | デスクトップ（`DesktopFormFactor`）のみ |
 | 権限 | `ReadWriteDocument` |
 | 要件セット（マニフェスト） | `ExcelApi 1.9` |
-| 要件セット（実行時判定） | `ImageCoercion 1.2`（SVG 挿入時のみ。§4.4） |
+| 要件セット（実行時判定） | `ImageCoercion 1.2`（SVG / SVG (for shape conversion) の挿入時のみ。§4.4） |
 | 主要ライブラリ | mermaid `^11.0.0`（バンドル同梱）、Office.js（Microsoft CDN から読み込み） |
 
 ImageCoercion 1.2 をマニフェストに宣言しないのは、非対応環境でアドイン全体が読み込めなくなるのを避け、PNG / JPEG は使えるようにするため。
@@ -50,13 +50,15 @@ ImageCoercion 1.2 をマニフェストに宣言しないのは、非対応環�
 | 2 | シート図形選択 | `sheet-diagram-select` | ラベル「Sheet diagram」。先頭は `(No diagram selected)`（値は空）。以降にアクティブシート上の Mermaid 図形を図形名で列挙 |
 | 3 | Mermaid 入力欄 | `mermaid-input` | 等幅フォントの textarea（初期高さ 100px、スペルチェック無効）。初期値はサンプルのフローチャート（§3.1） |
 | 4 | スプリッタ | `splitter` | 入力欄とプレビューの境界。ドラッグで入力欄の高さを変更（§4.7） |
-| 5 | 形式選択 | `format-select` | `PNG`（既定）/ `JPEG` / `SVG` |
+| 5 | 形式選択 | `format-select` | `PNG`（既定）/ `JPEG` / `SVG` / `SVG (for shape conversion)`（値 `svg-office`）/ `Shapes (editable)`（値 `shapes`） |
 | 6 | 挿入ボタン | `insert-btn` | 「Insert to Excel」。初期状態は無効 |
-| 7 | ダウンロードボタン | `download-btn` | 「Download」。初期状態は無効 |
+| 7 | ダウンロードボタン | `download-btn` | 「Download」。初期状態は無効。形式が `Shapes (editable)` の間も無効 |
 | 8 | エラー表示 | `error` | エラーメッセージを赤字で表示 |
 | 9 | プレビュー | `preview` | レンダリング結果の SVG を表示（最小高さ 120px、はみ出しはスクロール）。入力が空のときは「Type Mermaid code」を表示 |
 
-形式選択は挿入とダウンロードの両方に適用される。
+形式選択は挿入とダウンロードの両方に適用される。形式を変更したときもボタンの有効・無効を更新する。
+
+`SVG (for shape conversion)` と `Shapes (editable)` は、アドインを持たない人が編集できる図形にするための方式で、比較のために両方を提供している（§4.8、§4.9）。
 
 ### 3.1 入力欄の初期値
 
@@ -97,13 +99,14 @@ graph LR
   1. エラー表示をクリアし、挿入・ダウンロードボタンを無効化する。
   2. 入力をトリムし、空ならヒント表示に戻して終了する。
   3. 既存の `#mermaid-graph` 要素を削除してから `mermaid.render("mermaid-graph", code)` を実行する。
-  4. 成功時はプレビューに SVG を表示し、両ボタンを有効化する。
+  4. 成功時はプレビューに SVG を表示し、両ボタンを有効化する（形式が `Shapes (editable)` のときダウンロードボタンは無効のまま）。
   5. 失敗時はプレビューを空にし、`Render error: <メッセージ>` を表示する。
+- **入力中**: `input` イベントの時点で挿入・ダウンロードボタンを無効化し、実行中の描画があれば破棄する（リクエスト ID を進める）。プレビューが入力内容と一致しない間に、古い図と新しいコードの組み合わせで挿入されるのを防ぐため。
 - **競合制御**: 描画ごとにリクエスト ID を採番し、完了時に最新 ID でなければ結果を破棄する（古い描画結果で上書きしない）。
 
 ### 4.3 シート図形一覧
 
-- **対象**: アクティブシートの図形のうち、`type === "Image"` かつ `altTextTitle === "Mermaid Diagram"` のもの。画像形式（PNG / JPEG / SVG）は問わない。
+- **対象**: アクティブシートの図形のうち、`type` が `Image` / `Group` / `GeometricShape` のいずれかで、`altTextTitle === "Mermaid Diagram"` のもの。`Group` と `GeometricShape` は `Shapes (editable)` で挿入した図（§4.9）。
 - **表示**: 図形名（`shape.name`）。値は図形 ID。
 - **読み込みタイミング**:
   - タスクペイン起動時
@@ -125,6 +128,8 @@ graph LR
 | なし | アクティブセルの左上 | Excel の既定 | — |
 | あり | 選択図形と同じ位置 | 選択図形の名前を引き継ぐ | 新しい図形の挿入後に削除 |
 
+差し替え時はアクティブセルを読まない（図形を選択している間は Excel がアクティブセルの取得を拒否するため）。
+
 **形式別の処理**:
 
 - **PNG / JPEG**: §4.6 で画像化し、`shapes.addImage` で追加する。表示サイズは SVG の実寸（px × 0.75pt）に設定する。追加・プロパティ設定・元図形の削除は 1 回の `sync` で行う。
@@ -133,10 +138,14 @@ graph LR
   2. 挿入前にシート上の図形 ID 一覧と配置先を取得する。
   3. `setSelectedDataAsync`（`CoercionType.XmlSvg`）で挿入する。
   4. 挿入前後の図形 ID の差分から新しい図形を特定する。ちょうど 1 個でなければ `Could not identify the inserted shape.` エラーとする。
-  5. 新しい図形に位置・名前・代替テキストを設定する。
+  5. 新しい図形に位置・名前・代替テキストを設定する。プレビュー SVG の viewBox があれば、縦横比の固定を外して表示サイズを SVG の実寸（px × 0.75pt）にする（Excel は SVG を独自の大きさで挿入するが、「図形に変換」は図形を画像の大きさに合わせて拡大縮小する一方で文字の大きさは変えないため、実寸でないと文字がはみ出す）。
   6. 差し替えの場合、元図形がまだ存在すれば削除する。
 
   挿入が失敗した場合、元図形は削除されずに残る。
+- **SVG (for shape conversion)**: §4.8 で変換した SVG を、SVG と同じ手順で挿入する。
+- **Shapes (editable)**:
+  1. Mermaid コードを `mermaid.mermaidAPI.getDiagramFromText` で解析し、フローチャート（`flowchart` / `flowchart-v2` / `flowchart-elk`）でなければ `Shapes format supports flowcharts only.` エラーとする。
+  2. §4.9 でプレビューの SVG から図形モデルを作り、Excel の図形として挿入する。
 
 **共通の付与情報**:
 
@@ -156,6 +165,8 @@ graph LR
 | PNG | `diagram.png` | §4.6 |
 | JPEG | `diagram.jpg` | §4.6 |
 | SVG | `diagram.svg` | プレビュー SVG を `XMLSerializer` で文字列化 |
+| SVG (for shape conversion) | `diagram.svg` | §4.8 |
+| Shapes (editable) | — | ダウンロード不可（ボタン無効） |
 
 失敗時は `Download error: <メッセージ>` を表示する。
 
@@ -180,6 +191,69 @@ Excel 挿入時は §4.4 のとおり基準サイズで表示するため、見�
 - ドラッグ（Pointer Events）で入力欄の高さを変更する。上下矢印キーでも 10px 単位で変更できる（`role="separator"`、フォーカス可能）。
 - 入力欄の高さは最小 40px。プレビューが 120px を下回らない範囲までしか広げない。
 - 変更した高さは保存しない（タスクペインを開き直すと初期値に戻る）。
+
+### 4.8 図形変換向け SVG（`officeSvg.ts`）
+
+Excel の「図形に変換」で文字・矢印・色がずれないよう、プレビュー中の SVG（計算済みスタイルと座標を読むため DOM 上にある必要がある）を平坦な SVG に書き直す。
+
+| 項目 | 処理 |
+|---|---|
+| ルート | `viewBox` の原点を 0,0 に移し、`width` / `height` を viewBox の寸法にする。viewBox がなければ `getBBox` を使う |
+| 構造 | 描画要素（rect / circle / ellipse / polygon / polyline / path / line / text）を、属性のない 1 つの `<g>` の直下に描画順で並べる。「図形に変換」すると 1 つのグループになる（`<g>` がないとばらばらの図形になる） |
+| 座標 | 各要素にルートからの変換行列を 1 つだけ付ける（平行移動なら `translate`、それ以外は `matrix`） |
+| スタイル | 計算済みスタイルから `fill` / `stroke` / `stroke-width` / `stroke-dasharray` / 不透明度を属性に書き出す。色は `#RRGGBB`、色のアルファと祖先の `opacity` は `fill-opacity` / `stroke-opacity` に畳み込む。`<style>`・`class`・`style` 属性は出力しない |
+| テキスト | 行（`tspan.text-outer-tspan`）ごとに、先頭文字のベースライン位置（`getStartPositionOfChar`）を絶対座標とする `<text>` を出す。em 単位の `dy` と `text-anchor` は使わない。`dominant-baseline` / `alignment-baseline` が alphabetic 以外（シーケンス図の `central` など）のときは、文字セルの上端（`getExtentOfChar`）と同じフォントのアルファベットベースラインの文字の上端との差からアルファベットベースラインの位置を求める。文字色は最初の文字のある `<tspan>` の計算済みスタイルから取る（シーケンス図は `<text>` に枠の色、`<tspan>` に文字色を付けるため）。太字・斜体・行と色の異なる部分は位置指定なしの `<tspan>` で残す |
+| 矢印 | path / line / polyline の `marker-start` / `marker-end` の中身を、端点の位置と向き（`getTotalLength` / `getPointAtLength`）、マーカーの `viewBox` / `refX` / `refY` / `markerWidth` / `markerHeight` / `orient` から計算した変換で普通の図形として描く |
+| 除外 | `defs` / `marker` / `style` などの非描画要素、`display:none` / `visibility:hidden`、幅か高さのない rect、塗りも線もない要素。線の間隔がすべて 0 の `stroke-dasharray`（mermaid の実線 `1, 0` や `0`。奇数個の値は SVG と同様に繰り返して対にしてから判定する） |
+
+### 4.9 Excel 図形での挿入（`flowchartModel.ts` / `excelShapes.ts`）
+
+フローチャートを Excel の図形・コネクタ・テキストボックスで組み立て、1 つのグループにする。
+
+**図形モデルの作成**: 種類（形・矢印・線種）は mermaid の `db.getData()`、位置・大きさ・色はプレビュー SVG の DOM から取る。座標は全図形の外接矩形の左上を 0,0 とした pt（px × 0.75）。
+
+| 要素 | DOM | Excel |
+|---|---|---|
+| サブグラフ | `g.cluster`（id は `<svg id>-<サブグラフ id>`）の rect | 四角形。タイトルは上揃え。面積の大きい順に作り、ノードより背面に置く |
+| ノード | `g.node`（id は `<svg id>-<domId>`）の `.label-container` | 下表の図形。ラベルは図形内に上下左右中央揃え |
+| エッジ | `path[data-id=<edge id>]` の `data-points`（base64 の JSON 点列）の始点・終点。自己ループ（始点と終点が同じノード）は mermaid が補助ノード経由の 3 本のパス（`<ノード id>-cyclic-special-1` / `-mid` / `-2`）で描くため、`-1` の始点と `-2` の終点を使う | 両端をノードに接続したコネクタ。自己ループはノードごとに 1 本（mermaid も 1 本しか描かない） |
+| エッジラベル | `.edgeLabel .label` の背景 rect | 枠線なしのテキストボックス。空のラベルは作らない |
+
+| mermaid の形 | Excel の図形 |
+|---|---|
+| squareRect / rect | Rectangle |
+| roundedRect / rounded | RoundRectangle |
+| stadium | FlowChartTerminator |
+| subroutine / fr-rect | FlowChartPredefinedProcess |
+| cylinder / cyl | Can |
+| circle / doublecircle / dbl-circ / ellipse | Ellipse |
+| diamond / diam | Diamond |
+| hexagon / hex | Hexagon |
+| lean_right / lean_left / lean-r / lean-l | Parallelogram |
+| trapezoid / trap-b | Trapezoid |
+| inv_trapezoid / trap-t | FlowChartManualOperation |
+| doc | FlowChartDocument |
+| その他 | Rectangle |
+
+- **ラベル**: 行 tspan の文字列を改行で連結する（mermaid の折り返し位置を維持）。フォントサイズ（px × 0.75）と文字色は計算済みスタイルから取る。フォント名は指定しない（Excel の既定フォント）。
+- **ラベルが図形に収まらない場合**: Excel は図形ごとに文字の配置領域が決まっており（ひし形は幅の半分、楕円は約 7 割など）、それより広い文字は単語の途中でも折り返す。余白を負にしても広がらない。そこで、ラベルの幅 × 1.15（フォント差の余裕）が図形の文字領域より広いときは、図形の文字を空にし、ラベルを図形に重ねたテキストボックス（図形の幅以上、枠線・塗りなし、図形の中心に配置）にする。
+- **塗り・線**: 計算済みスタイルの色と不透明度（透過率 = 1 − アルファ × fill-opacity × opacity）。線の太さは px × 0.75 を整数に丸めた値（最小 1pt。Excel が小数の太さを `InvalidArgument` で拒否するため）、`stroke-dasharray` に 0 より大きい間隔があれば破線（Dash。判定は §4.8 と同じ）。
+- **エッジ**: 矢印は `arrow_point` → Triangle、`arrow_circle` → Oval、`arrow_cross` → Diamond。`invisible`（`~~~`）は作らない。始点と終点の x または y の差が 1px 未満なら直線（Straight）、それ以外と自己ループはカギ線（Elbow）。
+- **接続位置**: 端点がノードの中心からどの向きにあるかを、ノードの縦横比で正規化した角度で求め、最も近い方向の接続ポイントに接続する。自己ループの終点は、始点と同じ接続ポイントを除いた中で最も近いものにする（同じ点では長さ 0 になるため）。接続ポイントの方向は、多くの図形では「上から反時計回りに等間隔」で、Excel で実測して異なっていた図形は次の表による（上から反時計回りの角度、接続ポイント番号順）。
+
+  | 図形 | 接続ポイントの方向 |
+  |---|---|
+  | Can | 0°, 0°, 90°, 180°, 270° |
+  | Hexagon | 270°, 215°, 145°, 90°, 35°, 325°（上下の辺の中央にはない） |
+  | Parallelogram | 0°, 351°, 270°, 171°, 180°, 90° |
+
+**Excel への書き込み**（1 回の `Excel.run`）:
+
+1. 配置先を取得する（§4.4 の配置規則）。
+2. サブグラフとノードを `addGeometricShape` で作り、位置・塗り・線・テキスト（余白 0、自動調整なし）を設定する。`connectionSiteCount` を読み込んで `sync` する。
+3. エッジを `addLine` で作り、`connectBeginShape` / `connectEndShape` で接続し、矢印と線を設定する。接続先のノードがない端は接続しない。
+4. エッジラベルを `addTextBox` で作る。
+5. 図形が 2 個以上なら `addGroup` でまとめる（1 個ならそのまま）。まとめた図形に位置・名前・代替テキストを設定し、差し替え時は元図形を削除して `sync` する。図形が 0 個なら `The diagram has no shapes.` エラーとする。
 
 ---
 
@@ -242,14 +316,17 @@ Vitest（jsdom 環境）で `test/*.test.ts` を実行する。設定は `vitest
 | テスト | 対象 | 方法 |
 |---|---|---|
 | `util.test.ts` | `util.ts` | そのまま実行 |
-| `excelShapes.test.ts` | §4.3 / §4.4 の Excel 操作 | `Excel` / `Office` グローバルをフェイク（`test/fakes/office.ts`）に差し替え |
+| `excelShapes.test.ts` | §4.3 / §4.4 / §4.9 の Excel 操作 | `Excel` / `Office` グローバルをフェイク（`test/fakes/office.ts`）に差し替え |
+| `officeSvg.test.ts` | §4.8 | SVG の座標・計測 API をスタブ（`test/fakes/svgGeometry.ts`） |
+| `flowchartModel.test.ts` | §4.9 の図形モデル作成 | 同上 |
+| `svgUtil.test.ts` | 行列・色の変換 | そのまま実行 |
 | `image.test.ts` | §4.6 | `Image` と Canvas をモック |
-| `render.test.ts` | §4.1 / §4.2 の mermaid 呼び出し | `mermaid` をモック |
+| `render.test.ts` | §4.1 / §4.2 / §4.4 の mermaid 呼び出し | `mermaid` をモック |
 | `splitter.test.ts` | §4.7 | 要素の `offsetHeight` をスタブ |
 | `taskpane.test.ts` | §3〜§4.5 の UI 動作 | `taskpane.html` を読み込み、Excel 操作・描画・画像化をモック |
 | `scripts.test.ts` | §6.1 のバージョン反映、§6.2 | 一時ディレクトリにコピーしたプロジェクトで実行（Node 環境） |
 
-mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）、`watch` / `serve` モード、Excel 上での動作は自動テストの対象外。
+mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）、`watch` / `serve` モード、Excel 上での動作は自動テストの対象外。jsdom は `<svg>` 内の `<style>` を適用しないため、§4.8 / §4.9 のテストではスタイルを `<svg>` の外に置く。
 
 ---
 
@@ -289,3 +366,13 @@ mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）�
 
 1. **SVG 挿入の一時的な位置**: SVG は Excel の選択範囲に挿入された後で目的の位置へ移動する。
 2. **同名の既存共有**: 共有 `MermaidForExcel` が別のフォルダを指して既に存在する場合、インストーラは作り直さない。
+3. **SVG (for shape conversion)**: 「図形に変換」は利用者が Excel で行う。挿入後に画像の大きさを変えてから変換すると、文字の大きさが図形と合わなくなる。日本語など Trebuchet MS にない文字は、Excel では ＭＳ ゴシックになり、プレビューとフォントが変わる。変換後のエッジはフリーフォームの線で、ノードとは接続されない（ノードを動かしても線は付いてこない）。ラベルもノードとは別のテキストボックスになる。
+4. **Shapes (editable) の近似**:
+   - フローチャートのみ対応。
+   - エッジの曲線は直線かカギ線のコネクタになり、経路は Excel が決める。
+   - × の矢印は Diamond で代用する。
+   - 左向き平行四辺形（lean_left）と旗形（odd）など、対応する図形がない形は近い図形か四角形になる。
+   - フォントが mermaid と異なるため、ラベルの折り返しや幅が変わることがある。
+   - 図形に収まらないラベル（§4.9）は別のテキストボックスになるため、ノードだけを動かすとラベルが残る。
+   - 六角形には上下の辺の中央に接続ポイントがないため、上下から来るエッジは角に接続される。
+   - §4.9 の表にない図形の接続ポイントは「上から反時計回りに等間隔」と仮定している。

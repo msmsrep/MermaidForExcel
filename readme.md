@@ -14,6 +14,7 @@ Landing page and install guide: https://msmsrep.github.io/MermaidForExcel/?lang=
 - **Insert into Excel** — Insert the previewed image at the active cell with one click
 - **Re-editing** — The Mermaid code is stored in the inserted image's alt text; pick it from [Sheet diagram] to edit and replace it
 - **PNG / JPEG / SVG output** — Choose your output format and download the image directly
+- **Editable shapes (experimental)** — Insert a flowchart as native Excel shapes and connectors (`Shapes (editable)`), or as an SVG simplified for Excel's *Convert to Shape* (`SVG (for shape conversion)`), so people without the add-in can edit it
 - **Wide diagram support** — All diagram types supported by [Mermaid](https://github.com/mermaid-js/mermaid) are available, including flowcharts, sequence diagrams, class diagrams, ER diagrams, and Gantt charts
 - **Privacy-friendly** — All processing is completed within the task pane; no data is sent to external servers
 
@@ -33,6 +34,9 @@ MermaidForExcel/
     taskpane.ts            ← UI wiring (entry point)
     render.ts              ← Mermaid rendering
     image.ts               ← SVG → PNG/JPEG conversion
+    officeSvg.ts           ← SVG simplified for Excel's Convert to Shape
+    flowchartModel.ts      ← Flowchart SVG → Excel shape model
+    svgUtil.ts             ← Matrix and color helpers
     excelShapes.ts         ← Excel shape insert / replace / list
     splitter.ts            ← Editor / preview splitter
   test/                    ← Vitest tests (Office.js, mermaid and Canvas are mocked)

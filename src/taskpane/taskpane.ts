@@ -1,13 +1,16 @@
 import {
   type DiagramItem,
   insertImageShape,
+  insertNativeShapes,
   insertSvgShape,
   isSvgInsertSupported,
   listDiagrams,
   onSheetActivated,
 } from "./excelShapes";
-import { type ImageFormat, serializeSvg, svgToDataUrl, svgToRaster } from "./image";
-import { initMermaid, renderMermaid } from "./render";
+import { extractFlowchart } from "./flowchartModel";
+import { type ImageFormat, serializeSvg, svgSize, svgToDataUrl, svgToRaster } from "./image";
+import { toOfficeSvg } from "./officeSvg";
+import { getFlowchartData, initMermaid, renderMermaid } from "./render";
 import { initSplitter } from "./splitter";
 import { byId, errorMessage } from "./util";
 
@@ -18,6 +21,12 @@ const FILE_EXTENSIONS: Record<ImageFormat, string> = {
   jpeg: "jpg",
   svg: "svg",
 };
+
+/**
+ * Image formats, plus "svg-office" (SVG simplified for Excel's Convert to
+ * Shape) and "shapes" (native Excel shapes; flowcharts only, no download).
+ */
+type OutputFormat = ImageFormat | "svg-office" | "shapes";
 
 Office.onReady(() => {
   initMermaid();
@@ -34,13 +43,17 @@ Office.onReady(() => {
   let renderDebounceTimer: number | undefined;
   let renderRequestId = 0;
   let diagramItems: DiagramItem[] = [];
+  let actionsEnabled = false;
 
-  const selectedFormat = () => formatSelect.value as ImageFormat;
+  const selectedFormat = () => formatSelect.value as OutputFormat;
 
   function setActionsEnabled(enabled: boolean) {
+    actionsEnabled = enabled;
     insertBtn.disabled = !enabled;
-    downloadBtn.disabled = !enabled;
+    downloadBtn.disabled = !enabled || selectedFormat() === "shapes";
   }
+
+  formatSelect.addEventListener("change", () => setActionsEnabled(actionsEnabled));
 
   // ── Sheet diagram dropdown ─────────────────────────────────────────────────
   function updateDiagramOptions(items: DiagramItem[], selectedId = "") {
@@ -113,6 +126,10 @@ Office.onReady(() => {
   }
 
   input.addEventListener("input", () => {
+    // The preview no longer matches the code: block insert/download until the
+    // next render, and discard any render already in progress.
+    renderRequestId++;
+    setActionsEnabled(false);
     window.clearTimeout(renderDebounceTimer);
     renderDebounceTimer = window.setTimeout(() => {
       void renderPreview();
@@ -145,14 +162,21 @@ Office.onReady(() => {
 
   bindSvgAction(downloadBtn, "Download error", async (svgEl) => {
     const format = selectedFormat();
-    const dataUrl =
-      format === "svg"
-        ? svgToDataUrl(serializeSvg(svgEl))
-        : `data:image/${format};base64,` + (await svgToRaster(svgEl, format)).base64;
+    if (format === "shapes") {
+      throw new Error("Shapes cannot be downloaded.");
+    }
+    let dataUrl: string;
+    if (format === "svg") {
+      dataUrl = svgToDataUrl(serializeSvg(svgEl));
+    } else if (format === "svg-office") {
+      dataUrl = svgToDataUrl(toOfficeSvg(svgEl));
+    } else {
+      dataUrl = `data:image/${format};base64,` + (await svgToRaster(svgEl, format)).base64;
+    }
 
     const a = document.createElement("a");
     a.href = dataUrl;
-    a.download = `diagram.${FILE_EXTENSIONS[format]}`;
+    a.download = `diagram.${FILE_EXTENSIONS[format === "svg-office" ? "svg" : format]}`;
     a.click();
   });
 
@@ -162,13 +186,24 @@ Office.onReady(() => {
     const replaceId = diagramSelect.value || undefined;
     let insertedShapeId: string;
 
-    if (format === "svg") {
+    if (format === "shapes") {
+      const data = await getFlowchartData(mermaidCode);
+      if (!data) {
+        throw new Error("Shapes format supports flowcharts only.");
+      }
+      insertedShapeId = await insertNativeShapes(
+        extractFlowchart(svgEl, data),
+        mermaidCode,
+        replaceId,
+      );
+    } else if (format === "svg" || format === "svg-office") {
       if (!isSvgInsertSupported()) {
         throw new Error(
           "SVG insertion is not supported in this version of Excel. Use PNG or JPEG.",
         );
       }
-      insertedShapeId = await insertSvgShape(serializeSvg(svgEl), mermaidCode, replaceId);
+      const svg = format === "svg" ? serializeSvg(svgEl) : toOfficeSvg(svgEl);
+      insertedShapeId = await insertSvgShape({ svg, ...svgSize(svgEl) }, mermaidCode, replaceId);
     } else {
       const image = await svgToRaster(svgEl, format);
       insertedShapeId = await insertImageShape(image, mermaidCode, replaceId);

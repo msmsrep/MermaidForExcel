@@ -16,6 +16,7 @@ Mermaid記法でダイアグラムを作成し、Excelのシートに画像と�
 - **Excelへの挿入** — プレビューした画像をワンクリックでアクティブセルの位置に挿入します
 - **再編集** — 挿入した図の Mermaid コードは代替テキストに保存され、[Sheet diagram] から選んで編集・差し替えできます
 - **PNG/JPEG/SVG出力対応** — 保存形式を選択してダウンロードすることもできます
+- **編集できる図形（試験的）** — フローチャートを Excel の図形とコネクタで挿入する `Shapes (editable)` と、Excel の「図形に変換」向けに整えた SVG を挿入する `SVG (for shape conversion)` を選べます。アドインを持たない人も図を編集できます
 - **多様なダイアグラム種別** — フローチャート、シーケンス図、クラス図、ER図、ガントチャートなど[Mermaid](https://github.com/mermaid-js/mermaid)がサポートするすべての記法が利用可能です
 - **プライバシー保護** — すべての処理はタスクペイン内で完結し、外部サーバーへのデータ送信はありません
 
@@ -35,6 +36,9 @@ MermaidForExcel/
     taskpane.ts            ← UI の結線（エントリポイント）
     render.ts              ← Mermaid のレンダリング
     image.ts               ← SVG → PNG/JPEG 変換
+    officeSvg.ts           ← Excel の「図形に変換」向けの SVG 変換
+    flowchartModel.ts      ← フローチャートの SVG → Excel 図形モデル
+    svgUtil.ts             ← 行列・色の共通処理
     excelShapes.ts         ← Excel 図形の挿入・差し替え・一覧取得
     splitter.ts            ← 入力欄とプレビューのスプリッタ
   test/                    ← Vitest のテスト（Office.js・mermaid・Canvas はモック）

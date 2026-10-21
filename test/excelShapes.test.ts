@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   insertImageShape,
+  insertNativeShapes,
   insertSvgShape,
   isSvgInsertSupported,
   listDiagrams,
   onSheetActivated,
 } from "../src/taskpane/excelShapes";
+import type { ShapeModel, ShapeNode } from "../src/taskpane/flowchartModel";
 import { createFakeOffice, type FakeOffice, type ShapeState } from "./fakes/office";
 
 const TITLE = "Mermaid Diagram";
 const image = { base64: "AAAA", width: 200, height: 100 };
+const svgImage = { svg: "<svg/>", width: 200, height: 100 };
 
 let fake: FakeOffice;
 
@@ -19,17 +22,21 @@ function setup(...shapes: Partial<ShapeState>[]) {
 }
 
 describe("listDiagrams", () => {
-  it("returns only images whose alt text title marks them as Mermaid diagrams", async () => {
+  it("returns images and shape diagrams whose alt text title marks them as Mermaid diagrams", async () => {
     setup(
       { name: "Diagram 1", altTextTitle: TITLE, altTextDescription: "graph TD\nA-->B" },
       { name: "Photo", altTextTitle: "Other" },
-      { name: "Rect", type: "GeometricShape", altTextTitle: TITLE },
+      { name: "Shapes", type: "Group", altTextTitle: TITLE, altTextDescription: "graph LR\nA-->B" },
+      { name: "Single", type: "GeometricShape", altTextTitle: TITLE, altTextDescription: "graph LR\nA" },
+      { name: "Arrow", type: "Line", altTextTitle: TITLE },
       { name: "Diagram 2", altTextTitle: TITLE, altTextDescription: "pie" },
     );
 
     expect(await listDiagrams()).toEqual([
       { id: "shape-1", name: "Diagram 1", altTextDescription: "graph TD\nA-->B" },
-      { id: "shape-4", name: "Diagram 2", altTextDescription: "pie" },
+      { id: "shape-3", name: "Shapes", altTextDescription: "graph LR\nA-->B" },
+      { id: "shape-4", name: "Single", altTextDescription: "graph LR\nA" },
+      { id: "shape-6", name: "Diagram 2", altTextDescription: "pie" },
     ]);
   });
 
@@ -119,7 +126,7 @@ describe("insertImageShape", () => {
 describe("insertSvgShape", () => {
   it("inserts through setSelectedDataAsync as XmlSvg and moves the new shape to the active cell", async () => {
     setup({ name: "Unrelated" });
-    const id = await insertSvgShape("<svg/>", "graph TD\nA-->B");
+    const id = await insertSvgShape(svgImage, "graph TD\nA-->B");
 
     expect(fake.Office.context.document.setSelectedDataAsync).toHaveBeenCalledWith(
       "<svg/>",
@@ -137,9 +144,27 @@ describe("insertSvgShape", () => {
     expect(fake.shapes.find((s) => s.name === "Unrelated")).toMatchObject({ altTextTitle: "" });
   });
 
+  it("sizes the new shape to the SVG's actual size so converted text fits", async () => {
+    setup();
+    const id = await insertSvgShape(svgImage, "pie");
+
+    expect(fake.shapes.find((s) => s.id === id)).toMatchObject({
+      lockAspectRatio: false,
+      width: 150,
+      height: 75,
+    });
+  });
+
+  it("keeps Excel's size when the SVG's size is unknown", async () => {
+    setup();
+    const id = await insertSvgShape({ svg: "<svg/>", width: 0, height: 0 }, "pie");
+
+    expect(fake.shapes.find((s) => s.id === id)).not.toHaveProperty("lockAspectRatio");
+  });
+
   it("replaces the target shape after the new one is in place", async () => {
     setup({ name: "My diagram", altTextTitle: TITLE, left: 111, top: 222 });
-    const id = await insertSvgShape("<svg/>", "pie", "shape-1");
+    const id = await insertSvgShape(svgImage, "pie", "shape-1");
 
     expect(fake.shapes.map((s) => s.id)).toEqual([id]);
     expect(fake.shapes[0]).toMatchObject({ left: 111, top: 222, name: "My diagram", altTextDescription: "pie" });
@@ -160,13 +185,13 @@ describe("insertSvgShape", () => {
       },
     );
 
-    expect(await insertSvgShape("<svg/>", "pie", "shape-1")).toBe("new");
+    expect(await insertSvgShape(svgImage, "pie", "shape-1")).toBe("new");
     expect(fake.ops.filter((o) => o.op === "delete")).toEqual([]);
   });
 
   it("fails before inserting when the target no longer exists", async () => {
     setup();
-    await expect(insertSvgShape("<svg/>", "pie", "missing")).rejects.toThrow(
+    await expect(insertSvgShape(svgImage, "pie", "missing")).rejects.toThrow(
       "Selected diagram no longer exists.",
     );
     expect(fake.Office.context.document.setSelectedDataAsync).not.toHaveBeenCalled();
@@ -177,7 +202,7 @@ describe("insertSvgShape", () => {
     fake.svgInsert.result = "fail";
     fake.svgInsert.errorMessage = "Not allowed";
 
-    await expect(insertSvgShape("<svg/>", "pie", "shape-1")).rejects.toThrow("Not allowed");
+    await expect(insertSvgShape(svgImage, "pie", "shape-1")).rejects.toThrow("Not allowed");
     expect(fake.shapes.map((s) => s.id)).toEqual(["shape-1"]);
   });
 
@@ -185,9 +210,217 @@ describe("insertSvgShape", () => {
     setup({ altTextTitle: TITLE });
     fake.svgInsert.addShapes = n;
 
-    await expect(insertSvgShape("<svg/>", "pie", "shape-1")).rejects.toThrow(
+    await expect(insertSvgShape(svgImage, "pie", "shape-1")).rejects.toThrow(
       "Could not identify the inserted shape.",
     );
     expect(fake.shapes.some((s) => s.id === "shape-1")).toBe(true);
+  });
+});
+
+describe("insertNativeShapes", () => {
+  const label = (text: string) => ({ text, size: 12, color: "#333333" });
+  const node = (id: string, left: number, extra: Partial<ShapeNode> = {}): ShapeNode => ({
+    id,
+    type: "Rectangle",
+    box: { left, top: 10, width: 40, height: 20 },
+    fill: { color: "#ECECFF", transparency: 0 },
+    line: { color: "#9370DB", weight: 0.75, dashStyle: "Solid" },
+    label: label(id),
+    labelPosition: "Middle",
+    ...extra,
+  });
+  // S contains A and B; A -> B ("Yes") goes from A's right side to B's left side.
+  const model: ShapeModel = {
+    nodes: [
+      node("S", 0, { box: { left: 0, top: 0, width: 200, height: 40 }, labelPosition: "Top" }),
+      node("A", 10),
+      node("B", 100, { type: "Diamond" }),
+    ],
+    edges: [{
+      from: "A",
+      to: "B",
+      begin: { x: 50, y: 20 },
+      end: { x: 100, y: 20 },
+      beginArrow: "None",
+      endArrow: "Triangle",
+      line: { color: "#333333", weight: 2.63, dashStyle: "Dash" },
+      connectorType: "Straight",
+    }],
+    labels: [{ box: { left: 65, top: 15, width: 20, height: 10 }, fill: null, label: label("Yes") }],
+  };
+  const byId = (id: string) => fake.allShapes.find((s) => s.id === id)!;
+
+  it("creates subgraphs, nodes, connectors and labels in z-order and groups them", async () => {
+    setup();
+    const id = await insertNativeShapes(model, "graph LR\nA-->B");
+
+    expect(fake.ops.map((o) => o.op)).toEqual([
+      "addGeometricShape", "addGeometricShape", "addGeometricShape", "addLine", "addTextBox", "addGroup",
+    ]);
+    expect(fake.shapes.map((s) => s.id)).toEqual([id]);
+    expect(byId(id)).toMatchObject({
+      type: "Group",
+      members: ["shape-1", "shape-2", "shape-3", "shape-4", "shape-5"],
+      left: 10,
+      top: 20,
+      altTextTitle: TITLE,
+      altTextDescription: "graph LR\nA-->B",
+    });
+  });
+
+  it("places shapes relative to the active cell with their fill, outline and centered text", async () => {
+    setup();
+    await insertNativeShapes(model, "graph LR\nA-->B");
+
+    expect(byId("shape-2")).toMatchObject({
+      geometricShapeType: "Rectangle",
+      left: 20,
+      top: 30,
+      width: 40,
+      height: 20,
+      fill: { color: "#ECECFF", transparency: 0 },
+      // Excel only accepts whole-point weights.
+      lineFormat: { color: "#9370DB", weight: 1, dashStyle: "Solid" },
+      textFrame: {
+        autoSizeSetting: "AutoSizeNone",
+        leftMargin: 0,
+        rightMargin: 0,
+        topMargin: 0,
+        bottomMargin: 0,
+        horizontalAlignment: "Center",
+        verticalAlignment: "Middle",
+        text: "A",
+        fontSize: 12,
+        fontColor: "#333333",
+      },
+    });
+    expect(byId("shape-1").textFrame).toMatchObject({ text: "S", verticalAlignment: "Top" });
+    expect(byId("shape-3").geometricShapeType).toBe("Diamond");
+  });
+
+  it("attaches connectors to the nearest connection sites with arrowheads and line style", async () => {
+    setup();
+    await insertNativeShapes(model, "graph LR\nA-->B");
+
+    expect(byId("shape-4")).toMatchObject({
+      lineFormat: { color: "#333333", weight: 3, dashStyle: "Dash" },
+      line: {
+        connectorType: "Straight",
+        begin: { left: 60, top: 40 },
+        end: { left: 110, top: 40 },
+        // Sites run counterclockwise from the top: 1 = left, 3 = right.
+        beginShape: "shape-2",
+        beginSite: 3,
+        endShape: "shape-3",
+        endSite: 1,
+        beginArrowheadStyle: "None",
+        endArrowheadStyle: "Triangle",
+      },
+    });
+  });
+
+  it("adds edge labels as borderless text boxes", async () => {
+    setup();
+    await insertNativeShapes(model, "graph LR\nA-->B");
+
+    expect(byId("shape-5")).toMatchObject({
+      type: "TextBox",
+      left: 75,
+      top: 35,
+      fill: { cleared: true },
+      lineFormat: { visible: false },
+      textFrame: { text: "Yes", horizontalAlignment: "Center", verticalAlignment: "Middle" },
+    });
+  });
+
+  it("adds connectors only after the nodes' connection sites are loaded", async () => {
+    setup();
+    await insertNativeShapes(model, "graph LR\nA-->B");
+
+    const nodeBatch = fake.ops.find((o) => o.op === "addGeometricShape")!.batch;
+    const lineBatch = fake.ops.find((o) => o.op === "addLine")!.batch;
+    expect(lineBatch).toBe(nodeBatch + 1);
+  });
+
+  it("uses the measured connection sites of shapes whose sites do not start at the top", async () => {
+    setup();
+    // Excel's hexagon has six sites starting at the right: 3 is the left vertex.
+    fake.siteCounts.Hexagon = 6;
+    const hex = node("B", 100, { type: "Hexagon" });
+    await insertNativeShapes({ ...model, nodes: [model.nodes[1], hex] }, "graph LR\nA-->B");
+
+    expect(byId("shape-3").line).toMatchObject({ endShape: "shape-2", endSite: 3 });
+  });
+
+  it("attaches the two ends of a self-loop to different sites", async () => {
+    setup();
+    // Both ends leave A's bottom (site 2); the end is right of the start.
+    const loop = { ...model.edges[0], to: "A", begin: { x: 25, y: 30 }, end: { x: 35, y: 30 }, connectorType: "Elbow" as const };
+    await insertNativeShapes({ ...model, edges: [loop] }, "graph LR\nA-->A");
+
+    expect(byId("shape-4").line).toMatchObject({
+      beginShape: "shape-2",
+      beginSite: 2,
+      endShape: "shape-2",
+      endSite: 3,
+    });
+  });
+
+  it("leaves a connector end unattached when its node is missing", async () => {
+    setup();
+    const edge = { ...model.edges[0], to: "Z" };
+    await insertNativeShapes({ ...model, edges: [edge] }, "graph LR");
+
+    const line = byId("shape-4").line!;
+    expect(line.beginShape).toBe("shape-2");
+    expect(line.endShape).toBeUndefined();
+  });
+
+  it("replaces the target in the final sync, taking over its position and name", async () => {
+    setup({ name: "My diagram", altTextTitle: TITLE, left: 111, top: 222 });
+    const id = await insertNativeShapes(model, "graph LR\nA-->B", "shape-1");
+
+    expect(fake.shapes.map((s) => s.id)).toEqual([id]);
+    expect(byId(id)).toMatchObject({ left: 111, top: 222, name: "My diagram" });
+    expect(byId("shape-3")).toMatchObject({ left: 121, top: 232 });
+    const group = fake.ops.find((o) => o.op === "addGroup")!;
+    const del = fake.ops.find((o) => o.op === "delete")!;
+    expect(del.batch).toBe(group.batch);
+  });
+
+  it("does not group a single shape and marks it as the diagram", async () => {
+    setup();
+    const id = await insertNativeShapes({ nodes: [node("A", 0)], edges: [], labels: [] }, "graph LR\nA");
+
+    expect(fake.ops.map((o) => o.op)).toEqual(["addGeometricShape"]);
+    expect(byId(id)).toMatchObject({ type: "GeometricShape", altTextTitle: TITLE, left: 10, top: 20 });
+  });
+
+  it("clears the fill, hides the outline and skips text when the node has none", async () => {
+    setup();
+    const plain = node("A", 0, { fill: null, line: null, label: label("") });
+    const id = await insertNativeShapes({ nodes: [plain], edges: [], labels: [] }, "graph LR\nA");
+
+    expect(byId(id)).toMatchObject({ fill: { cleared: true }, lineFormat: { visible: false } });
+    expect(byId(id).textFrame).toBeUndefined();
+  });
+
+  it("fails when the model has no shapes", async () => {
+    setup();
+    await expect(insertNativeShapes({ nodes: [], edges: [], labels: [] }, "graph LR")).rejects.toThrow(
+      "The diagram has no shapes.",
+    );
+  });
+});
+
+describe("replacing while a shape is selected", () => {
+  it("does not read the active cell, which Excel refuses while a shape is selected", async () => {
+    setup({ name: "My diagram", altTextTitle: TITLE, left: 111, top: 222 });
+    fake.ctx.workbook.getActiveCell = () => {
+      throw new Error("The current selection is invalid for this operation.");
+    };
+
+    const id = await insertImageShape(image, "pie", "shape-1");
+    expect(fake.shapes.find((s) => s.id === id)).toMatchObject({ left: 111, top: 222 });
   });
 });
