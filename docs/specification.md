@@ -347,7 +347,7 @@ mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）�
 **インストール時**:
 
 1. マニフェストを配置先にコピーする。
-2. 共有名 `MermaidForExcel` が未作成なら、`net share MermaidForExcel="<配置先>"` を UAC 昇格して実行する。実行後に共有が存在しなければエラーダイアログを表示する。
+2. 共有名 `MermaidForExcel` が未作成なら、`net share MermaidForExcel="<配置先>"` を UAC 昇格して実行する。実行後に共有が存在しなければエラーダイアログを表示する。共有の有無は UNC パス `\\<コンピュータ名>\MermaidForExcel` を参照できるかで判定する（`net share <名前>` は非管理者ではアクセス拒否になるため使わない）。
 3. `HKCU\Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}` に以下を登録する。
 
    | 値 | 型 | データ |

@@ -74,7 +74,7 @@ Source: "{#MyAppPath}{#MyManifestName}"; DestDir: "{app}"; Flags: ignoreversion
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; ValueType: string; ValueName: "Id"; ValueData: "{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"
-Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; ValueType: string; ValueName: "Url"; ValueData: "\\\\{computername}\\{#MyShareName}"
+Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; ValueType: string; ValueName: "Url"; ValueData: "\\{computername}\{#MyShareName}"
 Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}}"; ValueType: dword; ValueName: "Flags"; ValueData: 1
 
 [Icons]
@@ -88,23 +88,8 @@ Root: HKCU; Subkey: "Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{{0e1e7d
 
 
 [Code]
-{ 共有の参照（管理者権限不要）。成功時 True }
-function ExecNetShare(const Params: string): Boolean;
-var
-	ResultCode: Integer;
-begin
-	Result := Exec(
-		ExpandConstant('{sys}\net.exe'),
-		'share ' + ExpandConstant(Params),
-		'',
-		SW_HIDE,
-		ewWaitUntilTerminated,
-		ResultCode
-	) and (ResultCode = 0);
-end;
-
 { 共有の作成・削除（UAC で昇格して実行）。
-  ShellExec は終了コードを返さないため、結果は呼び出し側で ExecNetShare により確認する }
+  ShellExec は終了コードを返さないため、結果は呼び出し側で CatalogShareExists により確認する }
 procedure ExecNetShareElevated(const Params: string);
 var
 	ErrorCode: Integer;
@@ -120,9 +105,11 @@ begin
 	);
 end;
 
+{ 共有の参照。net share <名前> は管理者権限がないとアクセス拒否（エラー 5）になるため、
+  UNC パスとして参照できるかで判定する }
 function CatalogShareExists: Boolean;
 begin
-	Result := ExecNetShare('{#MyShareName}');
+	Result := DirExists(ExpandConstant('\\{computername}\{#MyShareName}'));
 end;
 
 procedure EnsureCatalogShare;
