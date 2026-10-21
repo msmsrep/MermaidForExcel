@@ -6,6 +6,8 @@ An Office Add-in that creates diagrams using Mermaid syntax and inserts them as 
 
 Quickly draw flowcharts, sequence diagrams, ER diagrams, and more using text-based notation, then insert them as PNG/JPEG/SVG images into the active sheet. All processing happens locally — your input is never sent to external servers.
 
+Landing page and install guide: https://msmsrep.github.io/MermaidForExcel/?lang=en
+
 ### Key Features
 
 - **Real-time preview** — The diagram is rendered automatically in the task pane as you type Mermaid syntax
@@ -25,6 +27,7 @@ MermaidForExcel/
   tsconfig.json
   assets/                  ← Icon directory
   scripts/sync-version.js  ← Syncs the package.json version to the manifest and installer
+  site/index.html          ← Landing page served at the GitHub Pages root (includes install guide)
   src/taskpane/
     taskpane.html / .css
     taskpane.ts            ← UI wiring (entry point)

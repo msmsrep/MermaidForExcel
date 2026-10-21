@@ -233,6 +233,7 @@ Cookie、localStorage、外部送信は使用しない。
 
 - 本番資産は GitHub Pages（`https://msmsrep.github.io/MermaidForExcel/dist/`）でホストする。
 - `main` への push 時に GitHub Actions（`.github/workflows/pages.yml`）が型チェック・テスト・本番ビルドを行い、`dist/` を `/dist/` 配下としてデプロイする。`dist/` はリポジトリにコミットしない。
+- サイトのルート（`https://msmsrep.github.io/MermaidForExcel/`）には `site/` の内容（紹介ページ `index.html`。機能・導入方法・使い方・プライバシーを日英併記）を配置する。
 
 ### 6.4 テスト
 

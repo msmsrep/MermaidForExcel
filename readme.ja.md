@@ -8,6 +8,8 @@ Mermaid記法でダイアグラムを作成し、Excelのシートに画像と�
 テキストベースの記法でフローチャート・シーケンス図・ER図などを素早く描き、PNG/JPEG/SVG画像として現在のシートに貼り付けられます。
 ローカル完結処理のため、入力内容が外部に送信されることはありません。
 
+紹介ページと導入方法: https://msmsrep.github.io/MermaidForExcel/
+
 ## 主な機能
 
 - **リアルタイムプレビュー** — Mermaid記法を入力すると、タスクペイン内で自動的にダイアグラムが描画されます
@@ -27,6 +29,7 @@ MermaidForExcel/
   tsconfig.json
   assets/                  ← アイコン置き場
   scripts/sync-version.js  ← package.json のバージョンをマニフェストとインストーラに反映
+  site/index.html          ← GitHub Pages のトップに置く紹介ページ（導入方法を含む）
   src/taskpane/
     taskpane.html / .css
     taskpane.ts            ← UI の結線（エントリポイント）
