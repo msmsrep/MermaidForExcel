@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mermaid for Excel</title>
+    <meta
+      name="description"
+      content="Mermaid 記法でダイアグラムを作成し、Excel のシートに画像として挿入する Office アドイン"
+    />
+    <link rel="icon" type="image/png" href="dist/assets/icon-32.png" />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --bg-alt: #f5f7fb;
+        --surface: #ffffff;
+        --text: #1d2340;
+        --muted: #5b6178;
+        --border: #dfe3ec;
+        --accent: #1f86e0;
+        --accent-strong: #156bb8;
+        --accent-soft: #e6f2fd;
+        --excel: #107c10;
+        --code-bg: #1d2340;
+        --code-text: #e8ebf5;
+        --code-key: #7cc4ff;
+        --node-fill: #e6f2fd;
+        --node-stroke: #1f86e0;
+        --edge: #5b6178;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #11141f;
+          --bg-alt: #171b29;
+          --surface: #1c2131;
+          --text: #e8ebf5;
+          --muted: #a3a9bf;
+          --border: #2c3348;
+          --accent: #5aaef5;
+          --accent-strong: #84c3fa;
+          --accent-soft: #1b2b42;
+          --excel: #4cb84c;
+          --code-bg: #0b0d15;
+          --node-fill: #1b2b42;
+          --node-stroke: #5aaef5;
+          --edge: #a3a9bf;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #11141f;
+        --bg-alt: #171b29;
+        --surface: #1c2131;
+        --text: #e8ebf5;
+        --muted: #a3a9bf;
+        --border: #2c3348;
+        --accent: #5aaef5;
+        --accent-strong: #84c3fa;
+        --accent-soft: #1b2b42;
+        --excel: #4cb84c;
+        --code-bg: #0b0d15;
+        --node-fill: #1b2b42;
+        --node-stroke: #5aaef5;
+        --edge: #a3a9bf;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
+        font-size: 16px;
+        line-height: 1.75;
+      }
+      body.lang-ja .en,
+      body.lang-en .ja {
+        display: none !important;
+      }
+      a {
+        color: var(--accent);
+      }
+      a:hover {
+        color: var(--accent-strong);
+      }
+      code,
+      kbd {
+        font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+        font-size: 0.9em;
+      }
+      kbd {
+        padding: 1px 6px;
+        border: 1px solid var(--border);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        background: var(--surface);
+        white-space: nowrap;
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 16px;
+      }
+
+      /* ── header ── */
+      header {
+        border-bottom: 1px solid var(--border);
+      }
+      .bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        height: 60px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        color: var(--text);
+        text-decoration: none;
+      }
+      .brand img {
+        width: 30px;
+        height: 30px;
+        padding: 3px;
+        border-radius: 7px;
+        background: #ffffff;
+        border: 1px solid var(--border);
+      }
+      .bar nav {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-size: 14px;
+      }
+      .bar nav a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+      .bar nav a:hover {
+        color: var(--text);
+      }
+      .lang-switch {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .lang-switch button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 13px;
+        padding: 3px 10px;
+        cursor: pointer;
+      }
+      .lang-switch button[aria-pressed="true"] {
+        background: var(--accent-soft);
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      /* ── hero ── */
+      .hero {
+        display: grid;
+        grid-template-columns: 1fr 1.05fr;
+        gap: 48px;
+        align-items: center;
+        padding-top: 72px;
+        padding-bottom: 64px;
+      }
+      .hero h1 {
+        margin: 0 0 12px;
+        font-size: 44px;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+      }
+      .hero .lead {
+        margin: 0 0 28px;
+        font-size: 18px;
+        color: var(--muted);
+      }
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .btn {
+        display: inline-block;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        color: var(--text);
+        background: var(--surface);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .btn:hover {
+        color: var(--text);
+        border-color: var(--muted);
+      }
+      .btn.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .btn.primary:hover {
+        background: var(--accent-strong);
+        border-color: var(--accent-strong);
+        color: #fff;
+      }
+      :root[data-theme="dark"] .btn.primary,
+      :root[data-theme="dark"] .btn.primary:hover {
+        color: #0b0d15;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) .btn.primary,
+        :root:not([data-theme="light"]) .btn.primary:hover {
+          color: #0b0d15;
+        }
+      }
+
+      .demo {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--surface);
+        box-shadow: 0 12px 32px rgba(29, 35, 64, 0.08);
+      }
+      .demo pre {
+        margin: 0;
+        padding: 18px 20px;
+        background: var(--code-bg);
+        color: var(--code-text);
+        font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        overflow-x: auto;
+      }
+      .demo pre .k {
+        color: var(--code-key);
+      }
+      .demo .arrow {
+        padding: 6px 20px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--excel);
+        font-weight: 600;
+      }
+      .demo svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        padding: 16px;
+      }
+      .demo svg .node {
+        fill: var(--node-fill);
+        stroke: var(--node-stroke);
+        stroke-width: 1.5;
+      }
+      .demo svg .edge {
+        stroke: var(--edge);
+        stroke-width: 1.5;
+        fill: none;
+      }
+      .demo svg .head {
+        fill: var(--edge);
+      }
+      .demo svg text {
+        fill: var(--text);
+        font-family: "Segoe UI", system-ui, sans-serif;
+        font-size: 13px;
+        text-anchor: middle;
+        dominant-baseline: central;
+      }
+      .demo svg text.lbl {
+        fill: var(--muted);
+        font-size: 11px;
+      }
+
+      /* ── sections ── */
+      section {
+        padding: 64px 0;
+      }
+      section.alt {
+        background: var(--bg-alt);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      h2 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        line-height: 1.3;
+      }
+      .sub {
+        margin: 0 0 32px;
+        color: var(--muted);
+      }
+      .features {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .card {
+        padding: 20px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+      }
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+      .card p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      /* ── install ── */
+      .methods {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+      .method {
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface);
+      }
+      .method .tag {
+        display: inline-block;
+        margin-bottom: 8px;
+        padding: 1px 10px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .method h3 {
+        margin: 0 0 4px;
+        font-size: 19px;
+      }
+      .method .for {
+        margin: 0 0 16px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      ol.steps {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        counter-reset: s;
+      }
+      ol.steps > li {
+        position: relative;
+        padding: 0 0 14px 36px;
+        counter-increment: s;
+        font-size: 15px;
+      }
+      ol.steps > li::before {
+        content: counter(s);
+        position: absolute;
+        left: 0;
+        top: 1px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--bg);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 24px;
+        text-align: center;
+      }
+      ol.steps ul {
+        margin: 6px 0 0;
+        padding-left: 18px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .path {
+        font-weight: 600;
+      }
+      .note {
+        margin: 6px 0 0;
+        padding: 10px 14px;
+        border-left: 3px solid var(--accent);
+        background: var(--accent-soft);
+        border-radius: 0 6px 6px 0;
+        font-size: 14px;
+      }
+      pre.cmd {
+        margin: 6px 0 0;
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: var(--code-bg);
+        color: var(--code-text);
+        font-size: 13px;
+        overflow-x: auto;
+      }
+      .done {
+        margin-top: 28px;
+        padding: 18px 22px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+      }
+      .done h3 {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+      .done p {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      /* ── usage ── */
+      ol.usage {
+        margin: 0;
+        padding-left: 1.4em;
+      }
+      ol.usage li {
+        margin-bottom: 8px;
+      }
+
+      /* ── privacy ── */
+      .privacy ul {
+        margin: 0;
+        padding-left: 1.2em;
+      }
+      .privacy li {
+        margin-bottom: 6px;
+      }
+
+      footer {
+        padding: 28px 0 40px;
+        border-top: 1px solid var(--border);
+        font-size: 14px;
+        color: var(--muted);
+      }
+      footer .wrap {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      footer a {
+        color: var(--muted);
+      }
+
+      @media (max-width: 860px) {
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 32px;
+          padding-top: 48px;
+          padding-bottom: 48px;
+        }
+        .features {
+          grid-template-columns: 1fr 1fr;
+        }
+        .methods {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 560px) {
+        .hero h1 {
+          font-size: 34px;
+        }
+        .features {
+          grid-template-columns: 1fr;
+        }
+        .bar nav a {
+          display: none;
+        }
+        section {
+          padding: 48px 0;
+        }
+        .method {
+          padding: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body class="lang-ja">
+    <header>
+      <div class="wrap bar">
+        <a class="brand" href="./">
+          <img src="dist/assets/icon-80.png" alt="" />
+          Mermaid for Excel
+        </a>
+        <nav>
+          <a href="#features"><span class="ja">機能</span><span class="en">Features</span></a>
+          <a href="#install"><span class="ja">導入方法</span><span class="en">Install</span></a>
+          <a href="#privacy"><span class="ja">プライバシー</span><span class="en">Privacy</span></a>
+          <a href="https://github.com/msmsrep/MermaidForExcel">GitHub</a>
+          <span class="lang-switch" role="group" aria-label="Language">
+            <button type="button" data-lang="ja" aria-pressed="true">日本語</button>
+            <button type="button" data-lang="en" aria-pressed="false">EN</button>
+          </span>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <div class="wrap hero">
+        <div>
+          <h1>Mermaid for Excel</h1>
+          <p class="lead">
+            <span class="ja">
+              Mermaid 記法で書いたフローチャート・シーケンス図・ER 図などを、そのまま Excel
+              のシートに画像として挿入できる Office アドインです。処理はすべてローカルで完結します。
+            </span>
+            <span class="en">
+              An Office Add-in that turns Mermaid text into flowcharts, sequence diagrams, ER
+              diagrams and more, and inserts them into your Excel sheet as images. Everything runs
+              locally.
+            </span>
+          </p>
+          <div class="cta">
+            <a class="btn primary" href="#install"
+              ><span class="ja">導入方法を見る</span><span class="en">How to install</span></a
+            >
+            <a class="btn" href="https://github.com/msmsrep/MermaidForExcel">GitHub</a>
+          </div>
+        </div>
+
+        <div class="demo" aria-label="Mermaid code and the rendered diagram">
+          <pre><span class="k">graph</span> LR
+    A[Start] --&gt; B{Condition}
+    B --&gt;|Yes| C[Process A]
+    B --&gt;|No| D[Process B]
+    C --&gt; E[End]
+    D --&gt; E</pre>
+          <div class="arrow">
+            <span class="ja">↓ プレビューして Excel に挿入</span
+            ><span class="en">↓ Preview, then insert into Excel</span>
+          </div>
+          <svg viewBox="0 0 520 170" role="img" aria-label="Rendered flowchart">
+            <defs>
+              <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path class="head" d="M0,0 L10,5 L0,10 z" />
+              </marker>
+            </defs>
+            <!-- edges -->
+            <path class="edge" d="M78,85 L118,85" marker-end="url(#ah)" />
+            <path class="edge" d="M196,72 C230,40 250,40 290,40" marker-end="url(#ah)" />
+            <path class="edge" d="M196,98 C230,130 250,130 290,130" marker-end="url(#ah)" />
+            <path class="edge" d="M382,40 C420,40 430,70 448,78" marker-end="url(#ah)" />
+            <path class="edge" d="M382,130 C420,130 430,100 448,92" marker-end="url(#ah)" />
+            <text class="lbl" x="236" y="38">Yes</text>
+            <text class="lbl" x="236" y="134">No</text>
+            <!-- nodes -->
+            <rect class="node" x="8" y="66" width="70" height="38" rx="4" />
+            <text x="43" y="85">Start</text>
+            <path class="node" d="M157,45 L197,85 L157,125 L117,85 z" />
+            <text x="157" y="85">Condition</text>
+            <rect class="node" x="290" y="21" width="92" height="38" rx="4" />
+            <text x="336" y="40">Process A</text>
+            <rect class="node" x="290" y="111" width="92" height="38" rx="4" />
+            <text x="336" y="130">Process B</text>
+            <rect class="node" x="448" y="66" width="64" height="38" rx="4" />
+            <text x="480" y="85">End</text>
+          </svg>
+        </div>
+      </div>
+
+      <section id="features" class="alt">
+        <div class="wrap">
+          <h2><span class="ja">主な機能</span><span class="en">Features</span></h2>
+          <p class="sub">
+            <span class="ja">テキストで書いて、プレビューして、ワンクリックで挿入。</span>
+            <span class="en">Write text, preview it, insert it with one click.</span>
+          </p>
+          <div class="features">
+            <div class="card">
+              <h3><span class="ja">リアルタイムプレビュー</span><span class="en">Live preview</span></h3>
+              <p>
+                <span class="ja">入力するそばからタスクペイン内でダイアグラムを描画します。</span>
+                <span class="en">The diagram renders in the task pane as you type.</span>
+              </p>
+            </div>
+            <div class="card">
+              <h3><span class="ja">ワンクリックで挿入</span><span class="en">One-click insert</span></h3>
+              <p>
+                <span class="ja">プレビューした画像をアクティブセルの位置に挿入します。</span>
+                <span class="en">Insert the previewed image at the active cell.</span>
+              </p>
+            </div>
+            <div class="card">
+              <h3><span class="ja">挿入後も再編集</span><span class="en">Re-edit later</span></h3>
+              <p>
+                <span class="ja"
+                  >Mermaid コードは図の代替テキストに保存。[Sheet diagram]
+                  から選んで編集・差し替えできます。</span
+                >
+                <span class="en"
+                  >The code is kept in the image's alt text. Pick it from [Sheet diagram] to edit
+                  and replace it.</span
+                >
+              </p>
+            </div>
+            <div class="card">
+              <h3><span class="ja">PNG / JPEG / SVG</span><span class="en">PNG / JPEG / SVG</span></h3>
+              <p>
+                <span class="ja">形式を選んで挿入、またはファイルとしてダウンロードできます。</span>
+                <span class="en">Choose a format to insert, or download the image as a file.</span>
+              </p>
+            </div>
+            <div class="card">
+              <h3><span class="ja">あらゆる図に対応</span><span class="en">Every diagram type</span></h3>
+              <p>
+                <span class="ja"
+                  >フローチャート、シーケンス図、クラス図、ER 図、ガントチャートなど
+                  <a href="https://mermaid.js.org/">Mermaid</a> の全記法が使えます。</span
+                >
+                <span class="en"
+                  >Flowcharts, sequence, class, ER, Gantt and every other
+                  <a href="https://mermaid.js.org/">Mermaid</a> diagram.</span
+                >
+              </p>
+            </div>
+            <div class="card">
+              <h3><span class="ja">データは外に出ない</span><span class="en">Stays on your PC</span></h3>
+              <p>
+                <span class="ja">描画も挿入もタスクペイン内で完結。入力内容は送信されません。</span>
+                <span class="en">Rendering and inserting happen in the task pane. Nothing you type is sent anywhere.</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="install">
+        <div class="wrap">
+          <h2><span class="ja">導入方法</span><span class="en">Install</span></h2>
+          <p class="sub">
+            <span class="ja">
+              マニフェストファイル（<code>manifest.xml</code>）を Excel に登録するだけで使えます。お使いの環境に合わせて方法を選んでください。
+            </span>
+            <span class="en">
+              Register the manifest file (<code>manifest.xml</code>) with Excel. Pick the method
+              that fits your setup.
+            </span>
+          </p>
+
+          <div class="methods">
+            <div class="method">
+              <span class="tag"><span class="ja">方法 1・かんたん</span><span class="en">Method 1 · Quick</span></span>
+              <h3><span class="ja">マニフェストをアップロード</span><span class="en">Upload the manifest</span></h3>
+              <p class="for">
+                <span class="ja">Excel for the web / Microsoft 365 版 Excel</span>
+                <span class="en">Excel for the web / Excel for Microsoft 365</span>
+              </p>
+              <ol class="steps">
+                <li>
+                  <span class="ja">マニフェストをダウンロードします。</span>
+                  <span class="en">Download the manifest.</span>
+                  <div>
+                    <a class="btn primary" style="margin-top: 8px" href="dist/manifest.xml" download="manifest.xml"
+                      ><span class="ja">manifest.xml をダウンロード</span
+                      ><span class="en">Download manifest.xml</span></a
+                    >
+                  </div>
+                </li>
+                <li>
+                  <span class="ja">Excel でブックを開き、<span class="path">[挿入] → [アドイン] → [個人用アドイン]</span> を開きます。</span>
+                  <span class="en">In Excel, open a workbook and go to <span class="path">Insert → Add-ins → My Add-ins</span>.</span>
+                  <ul>
+                    <li>
+                      <span class="ja">表示がない場合は <span class="path">[ホーム] → [アドイン] → [その他のアドイン]</span> から開きます。</span>
+                      <span class="en">If it's not there, use <span class="path">Home → Add-ins → More Add-ins</span>.</span>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <span class="ja"><span class="path">[アドインをアップロード]</span>（または <span class="path">[マイ アドインのアップロード]</span>）を選び、ダウンロードした <code>manifest.xml</code> を指定します。</span>
+                  <span class="en">Choose <span class="path">Upload My Add-in</span> and select the downloaded <code>manifest.xml</code>.</span>
+                </li>
+              </ol>
+              <p class="note">
+                <span class="ja">アップロードしたアドインは、そのアカウントやブラウザーの環境によっては後で一覧から消えることがあります。その場合は同じ手順で再度アップロードしてください。</span>
+                <span class="en">Depending on your account or browser, an uploaded add-in may disappear from the list later. If so, upload it again the same way.</span>
+              </p>
+            </div>
+
+            <div class="method">
+              <span class="tag"><span class="ja">方法 2・常設</span><span class="en">Method 2 · Persistent</span></span>
+              <h3><span class="ja">共有フォルダーカタログ</span><span class="en">Shared folder catalog</span></h3>
+              <p class="for">
+                <span class="ja">Windows 版 Excel（デスクトップ）</span>
+                <span class="en">Excel on Windows (desktop)</span>
+              </p>
+              <ol class="steps">
+                <li>
+                  <span class="ja">任意のフォルダー（例: <code>C:\OfficeAddIns</code>）を作り、<a href="dist/manifest.xml" download="manifest.xml">manifest.xml</a> を保存します。</span>
+                  <span class="en">Create a folder (e.g. <code>C:\OfficeAddIns</code>) and save <a href="dist/manifest.xml" download="manifest.xml">manifest.xml</a> into it.</span>
+                </li>
+                <li>
+                  <span class="ja">そのフォルダーを共有します。エクスプローラーでフォルダーを右クリック → <span class="path">[プロパティ] → [共有] → [共有]</span>。表示されたネットワークパス（例: <code>\\PC名\OfficeAddIns</code>）を控えます。</span>
+                  <span class="en">Share the folder: right-click it in File Explorer → <span class="path">Properties → Sharing → Share</span>. Note the network path shown (e.g. <code>\\PCNAME\OfficeAddIns</code>).</span>
+                </li>
+                <li>
+                  <span class="ja">Excel で <span class="path">[ファイル] → [オプション] → [トラスト センター] → [トラスト センターの設定] → [信頼できるアドイン カタログ]</span> を開きます。</span>
+                  <span class="en">In Excel, open <span class="path">File → Options → Trust Center → Trust Center Settings → Trusted Add-in Catalogs</span>.</span>
+                </li>
+                <li>
+                  <span class="ja"><span class="path">[カタログの URL]</span> に共有パスを入力して <span class="path">[カタログの追加]</span>。<span class="path">[メニューに表示する]</span> にチェックを入れて OK し、Excel を再起動します。</span>
+                  <span class="en">Enter the share path in <span class="path">Catalog Url</span>, click <span class="path">Add catalog</span>, check <span class="path">Show in Menu</span>, click OK and restart Excel.</span>
+                </li>
+                <li>
+                  <span class="ja"><span class="path">[ホーム] → [アドイン] → [その他のアドイン] → [共有フォルダー]</span> から Mermaid for Excel を選んで <span class="path">[追加]</span>。</span>
+                  <span class="en">Go to <span class="path">Home → Add-ins → More Add-ins → Shared Folder</span>, select Mermaid for Excel and click <span class="path">Add</span>.</span>
+                </li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="done">
+            <h3><span class="ja">登録できたら</span><span class="en">Once it's registered</span></h3>
+            <p>
+              <span class="ja"><span class="path">[ホーム]</span> タブの右端に <span class="path">[Open Mermaid]</span> ボタンが追加されます。クリックするとタスクペインが開きます。</span>
+              <span class="en">An <span class="path">Open Mermaid</span> button appears at the right end of the <span class="path">Home</span> tab. Click it to open the task pane.</span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="usage" class="alt">
+        <div class="wrap">
+          <h2><span class="ja">使い方</span><span class="en">How to use</span></h2>
+          <p class="sub">
+            <span class="ja">記法の詳細は <a href="https://mermaid.js.org/intro/">Mermaid の公式ドキュメント</a> を参照してください。</span>
+            <span class="en">See the <a href="https://mermaid.js.org/intro/">Mermaid documentation</a> for the syntax.</span>
+          </p>
+          <ol class="usage">
+            <li>
+              <span class="ja">図を挿入したいセルを選択し、<span class="path">[Open Mermaid]</span> でタスクペインを開きます。</span>
+              <span class="en">Select the cell where the diagram should go and click <span class="path">Open Mermaid</span>.</span>
+            </li>
+            <li>
+              <span class="ja">入力欄に Mermaid コードを書くと、下にプレビューが表示されます。</span>
+              <span class="en">Type Mermaid code in the editor; the preview appears below it.</span>
+            </li>
+            <li>
+              <span class="ja">形式（PNG / JPEG / SVG）を選んで <span class="path">[Insert to Excel]</span>。ファイルとして保存するときは <span class="path">[Download]</span>。</span>
+              <span class="en">Pick a format (PNG / JPEG / SVG) and click <span class="path">Insert to Excel</span>, or <span class="path">Download</span> to save it as a file.</span>
+            </li>
+            <li>
+              <span class="ja">あとで直すときは <span class="path">[Sheet diagram]</span> から図を選ぶとコードが読み込まれ、編集して差し替えられます。</span>
+              <span class="en">To change it later, pick the diagram in <span class="path">Sheet diagram</span>; its code loads back in so you can edit and replace it.</span>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="privacy" class="privacy">
+        <div class="wrap">
+          <h2><span class="ja">プライバシー</span><span class="en">Privacy</span></h2>
+          <p class="sub">
+            <span class="ja">Mermaid for Excel は個人情報やデータを一切収集しません。</span>
+            <span class="en">Mermaid for Excel does not collect any personal information or data.</span>
+          </p>
+          <ul>
+            <li>
+              <span class="ja">入力した Mermaid コードの処理とダイアグラムの描画は、タスクペイン内だけで行います。</span>
+              <span class="en">Your Mermaid code is processed and rendered only inside the task pane.</span>
+            </li>
+            <li>
+              <span class="ja">シートへの画像挿入は Office JavaScript API を通じてローカルで行います。</span>
+              <span class="en">Images are inserted locally through the Office JavaScript API.</span>
+            </li>
+            <li>
+              <span class="ja">通信はアドイン本体（HTML / JavaScript）をこのサイトから読み込むときだけで、ユーザーのデータは含みません。</span>
+              <span class="en">The only network traffic is loading the add-in itself (HTML / JavaScript) from this site, and it contains none of your data.</span>
+            </li>
+            <li>
+              <span class="ja">Cookie、ローカルストレージ、トラッキング技術は使いません。</span>
+              <span class="en">No cookies, local storage or tracking technologies are used.</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>
+          © msmsrep ·
+          <a href="https://github.com/msmsrep/MermaidForExcel/blob/main/LICENSE.txt">MIT License</a> ·
+          <span class="ja">本アドインは <a href="https://github.com/mermaid-js/mermaid">mermaid</a>（MIT License）を使用しています。</span>
+          <span class="en">Uses <a href="https://github.com/mermaid-js/mermaid">mermaid</a> (MIT License).</span>
+        </span>
+        <span>
+          <span class="ja">お問い合わせ:</span><span class="en">Contact:</span>
+          <a href="https://github.com/msmsrep/MermaidForExcel/issues">GitHub Issues</a>
+        </span>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var buttons = document.querySelectorAll(".lang-switch button");
+        function apply(lang) {
+          document.body.className = "lang-" + lang;
+          document.documentElement.lang = lang;
+          buttons.forEach(function (b) {
+            b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+          });
+        }
+        var params = new URLSearchParams(location.search);
+        var lang = params.get("lang");
+        if (lang !== "ja" && lang !== "en") {
+          lang = /^ja\b/i.test(navigator.language || "") ? "ja" : "en";
+        }
+        apply(lang);
+        buttons.forEach(function (b) {
+          b.addEventListener("click", function () {
+            apply(b.dataset.lang);
+            var url = new URL(location.href);
+            url.searchParams.set("lang", b.dataset.lang);
+            history.replaceState(null, "", url);
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

@@ -30,8 +30,8 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
-      # manifest.xml の本番 URL (…/MermaidForExcel/dist/) に合わせて dist/ 配下に置く
-      - run: mkdir _site && cp -r dist _site/dist
+      # ルートに紹介ページ (site/)、manifest.xml の本番 URL (…/MermaidForExcel/dist/) に合わせて dist/ 配下にアドイン本体を置く
+      - run: mkdir _site && cp -r site/. _site/ && cp -r dist _site/dist
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
