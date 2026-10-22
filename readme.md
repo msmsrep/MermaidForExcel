@@ -44,6 +44,7 @@ TextToSvgDiagramsForExcel/
     excelTable.ts          ← Reads the selected cells
     tableToMermaid.ts      ← Table → Mermaid code
     splitter.ts            ← Editor / preview splitter
+  samples/                 ← Sample workbook for manual testing
   test/                    ← Vitest tests (Office.js, mermaid and Canvas are mocked)
   dist/                    ← Build output (not committed; deployed by GitHub Actions)
 ```
@@ -104,7 +105,7 @@ This software uses [mermaid](https://github.com/mermaid-js/mermaid) (MIT License
 
 ## Privacy Policy
 
-Last updated: April 6, 2026
+Last updated: October 22, 2026
 
 ### Data Collection
 
@@ -115,6 +116,7 @@ Text-to-SVG Diagrams for Excel does **not** collect any personal information or 
 - Mermaid syntax text entered by the user is processed **entirely within the task pane** in Excel
 - Diagram rendering is completed locally and no data is sent to external servers
 - Inserting images into Excel sheets is also performed locally via the Microsoft Office JavaScript API
+- When generating code from a table, the selected cell values are read only to build the code inside the task pane; they are not stored or sent anywhere
 
 ### Access to External Services
 

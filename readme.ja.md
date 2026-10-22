@@ -46,6 +46,7 @@ TextToSvgDiagramsForExcel/
     excelTable.ts          ← 選択セルの読み込み
     tableToMermaid.ts      ← 表 → Mermaid コードの生成
     splitter.ts            ← 入力欄とプレビューのスプリッタ
+  samples/                 ← 動作確認用のサンプルブック
   test/                    ← Vitest のテスト（Office.js・mermaid・Canvas はモック）
   dist/                    ← ビルド成果物（コミットしない。GitHub Actions でデプロイ）
 ```
@@ -107,7 +108,7 @@ npm run dev-server
 
 ## プライバシーポリシー
 
-最終更新日：2026年4月8日
+最終更新日：2026年10月22日
 
 ### データの収集について
 
@@ -118,6 +119,7 @@ Text-to-SVG Diagrams for Excelは、ユーザーの個人情報およびデー�
 - ユーザーが入力したMermaid記法のテキストは、エクセルの**タスクペイン内のみで処理**されます
 - ダイアグラムのレンダリングはローカルで完結し、外部サーバーへのデータ送信は行いません
 - Excelシートへの画像挿入も、Microsoft Office JavaScript API を通じてローカルで行われます
+- 表からコードを生成するときに読み込む選択セルの値は、タスクペイン内でコードの生成にだけ使い、保存や外部への送信は行いません
 
 ### 外部サービスへのアクセス
 
