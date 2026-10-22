@@ -21,8 +21,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -32,8 +32,8 @@ jobs:
       - run: npm run build
       # ルートに紹介ページ (site/)、manifest.xml の本番 URL (…/TextToSvgDiagramsForExcel/dist/) に合わせて dist/ 配下にアドイン本体を置く
       - run: mkdir _site && cp -r site/. _site/ && cp -r dist _site/dist
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
