@@ -34,19 +34,22 @@
       <button id="generate-btn" class="action-btn">Generate</button>
     </div>
 
-    <textarea
-      id="mermaid-input"
-      aria-label="Mermaid code"
-      spellcheck="false"
-      placeholder="graph TD&#10;A-->B"
-    >
+    <div id="editor">
+      <div id="input-backdrop" aria-hidden="true"></div>
+      <textarea
+        id="mermaid-input"
+        aria-label="Mermaid code"
+        spellcheck="false"
+        placeholder="graph TD&#10;A-->B"
+      >
 graph LR
     A[Start] --> B{Condition}
     B -->|Yes| C[Process A]
     B -->|No| D[Process B]
     C --> E[End]
     D --> E</textarea
-    >
+      >
+    </div>
     <div
       id="splitter"
       role="separator"

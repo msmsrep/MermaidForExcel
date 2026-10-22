@@ -73,6 +73,8 @@ const loadConfirm = () => $<HTMLDivElement>("load-confirm");
 const loadConfirmText = () => $<HTMLSpanElement>("load-confirm-text").textContent;
 const replaceBtn = () => $<HTMLButtonElement>("load-confirm-replace");
 const keepBtn = () => $<HTMLButtonElement>("load-confirm-keep");
+const errorHighlightLine = () =>
+  $<HTMLDivElement>("input-backdrop").querySelector(".error-line")?.textContent;
 const optionLabels = () => Array.from(diagramSelect().options, (o) => [o.value, o.textContent]);
 
 /** Lets pending promise chains (mocked async calls) settle. */
@@ -233,6 +235,40 @@ describe("preview", () => {
     expect(preview().innerHTML).toBe("");
     expect(insertBtn().disabled).toBe(true);
     expect(downloadBtn().disabled).toBe(true);
+  });
+
+  it("highlights the error line and offers to go to it", async () => {
+    m.renderMermaid.mockRejectedValue(new Error("Parse error on line 2:\n...\nExpecting 'ID'"));
+    type("\ngraph TD\n%% note\nA--> -->");
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(errorHighlightLine()).toBe("A--> -->");
+    const goTo = $<HTMLDivElement>("error").querySelector("button")!;
+    expect(goTo.textContent).toBe("Go to line 4");
+    goTo.click();
+    expect(input().selectionStart).toBe(18);
+  });
+
+  it("does not highlight errors without a line", async () => {
+    m.renderMermaid.mockRejectedValue(new Error("No diagram type detected"));
+    type("bad");
+    await vi.advanceTimersByTimeAsync(250);
+    expect(errorHighlightLine()).toBeUndefined();
+    expect($<HTMLDivElement>("error").querySelector("button")).toBeNull();
+  });
+
+  it.each([
+    ["a successful render", "graph TD\nA-->B"],
+    ["emptying the input", ""],
+  ])("clears the error highlight on %s", async (_, code) => {
+    m.renderMermaid.mockRejectedValueOnce(new Error("Parse error on line 1:"));
+    type("bad");
+    await vi.advanceTimersByTimeAsync(250);
+    expect(errorHighlightLine()).toBe("bad");
+
+    type(code);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(errorHighlightLine()).toBeUndefined();
   });
 
   it("clears the previous error on the next render", async () => {

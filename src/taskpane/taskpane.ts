@@ -8,9 +8,11 @@ import {
   onSheetActivated,
   watchDiagramSelection,
 } from "./excelShapes";
+import { errorSourceLine } from "./errorLine";
 import { readSelection } from "./excelTable";
 import { extractFlowchart } from "./flowchartModel";
 import { type ImageFormat, serializeSvg, svgSize, svgToDataUrl, svgToRaster } from "./image";
+import { initLineHighlight } from "./lineHighlight";
 import { toOfficeSvg } from "./officeSvg";
 import { getFlowchartData, initMermaid, renderMermaid } from "./render";
 import { initSplitter } from "./splitter";
@@ -35,6 +37,7 @@ Office.onReady(() => {
   initMermaid();
 
   const input = byId<HTMLTextAreaElement>("mermaid-input");
+  const inputBackdrop = byId<HTMLDivElement>("input-backdrop");
   const splitter = byId<HTMLDivElement>("splitter");
   const preview = byId<HTMLDivElement>("preview");
   const errDiv = byId<HTMLDivElement>("error");
@@ -179,13 +182,33 @@ Office.onReady(() => {
   }).catch(() => {/* ignore */});
 
   // ── Preview ────────────────────────────────────────────────────────────────
+  const errorHighlight = initLineHighlight(input, inputBackdrop);
+
+  /** Shows a render error, highlighting the line it points at when there is one. */
+  function showRenderError(source: string, message: string) {
+    errDiv.textContent = `Render error: ${message}`;
+    const line = errorSourceLine(source, message);
+    if (line === undefined) {
+      errorHighlight.clear();
+      return;
+    }
+    errorHighlight.show(line);
+    const goTo = document.createElement("button");
+    goTo.className = "link-btn";
+    goTo.textContent = `Go to line ${line + 1}`;
+    goTo.addEventListener("click", () => errorHighlight.goTo(line));
+    errDiv.append(" ", goTo);
+  }
+
   async function renderPreview() {
     const requestId = ++renderRequestId;
     errDiv.textContent = "";
     setActionsEnabled(false);
 
-    const code = input.value.trim();
+    const source = input.value;
+    const code = source.trim();
     if (!code) {
+      errorHighlight.clear();
       preview.innerHTML = PREVIEW_HINT_HTML;
       return;
     }
@@ -193,12 +216,13 @@ Office.onReady(() => {
     try {
       const svg = await renderMermaid(code);
       if (requestId !== renderRequestId) return;
+      errorHighlight.clear();
       preview.innerHTML = svg;
       setActionsEnabled(true);
     } catch (e) {
       if (requestId !== renderRequestId) return;
       preview.innerHTML = "";
-      errDiv.textContent = `Render error: ${errorMessage(e)}`;
+      showRenderError(source, errorMessage(e));
     }
   }
 
