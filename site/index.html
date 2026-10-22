@@ -158,6 +158,7 @@
         font: inherit;
         font-size: 13px;
         padding: 3px 10px;
+        white-space: nowrap;
         cursor: pointer;
       }
       .lang-switch button[aria-pressed="true"] {
@@ -168,12 +169,9 @@
 
       /* ── hero ── */
       .hero {
-        display: grid;
-        grid-template-columns: 1fr 1.05fr;
-        gap: 48px;
-        align-items: center;
-        padding-top: 72px;
-        padding-bottom: 64px;
+        padding-top: 64px;
+        padding-bottom: 56px;
+        text-align: center;
       }
       .hero h1 {
         margin: 0 0 12px;
@@ -182,14 +180,19 @@
         letter-spacing: -0.01em;
       }
       .hero .lead {
-        margin: 0 0 28px;
+        max-width: 720px;
+        margin: 0 auto 28px;
         font-size: 18px;
         color: var(--muted);
       }
       .cta {
         display: flex;
         flex-wrap: wrap;
+        justify-content: center;
         gap: 12px;
+      }
+      .hero .shot {
+        margin-top: 40px;
       }
       .btn {
         display: inline-block;
@@ -226,62 +229,26 @@
         }
       }
 
-      .demo {
+      /* ── screenshots ── */
+      .shot {
+        margin: 0;
         border: 1px solid var(--border);
         border-radius: 12px;
         overflow: hidden;
-        background: var(--surface);
-        box-shadow: 0 12px 32px rgba(29, 35, 64, 0.08);
+        background: #ffffff;
+        box-shadow: 0 12px 32px rgba(29, 35, 64, 0.1);
       }
-      .demo pre {
-        margin: 0;
-        padding: 18px 20px;
-        background: var(--code-bg);
-        color: var(--code-text);
-        font-family: Consolas, "Cascadia Mono", Menlo, monospace;
-        font-size: 14px;
-        line-height: 1.6;
-        overflow-x: auto;
-      }
-      .demo pre .k {
-        color: var(--code-key);
-      }
-      .demo .arrow {
-        padding: 6px 20px;
-        border-bottom: 1px solid var(--border);
-        font-size: 13px;
-        color: var(--excel);
-        font-weight: 600;
-      }
-      .demo svg {
+      .shot img {
         display: block;
         width: 100%;
         height: auto;
-        padding: 16px;
       }
-      .demo svg .node {
-        fill: var(--node-fill);
-        stroke: var(--node-stroke);
-        stroke-width: 1.5;
-      }
-      .demo svg .edge {
-        stroke: var(--edge);
-        stroke-width: 1.5;
-        fill: none;
-      }
-      .demo svg .head {
-        fill: var(--edge);
-      }
-      .demo svg text {
-        fill: var(--text);
-        font-family: "Segoe UI", system-ui, sans-serif;
-        font-size: 13px;
-        text-anchor: middle;
-        dominant-baseline: central;
-      }
-      .demo svg text.lbl {
-        fill: var(--muted);
-        font-size: 11px;
+      figcaption,
+      .caption {
+        margin-top: 10px;
+        font-size: 14px;
+        color: var(--muted);
+        text-align: center;
       }
 
       /* ── sections ── */
@@ -304,7 +271,7 @@
       }
       .features {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 16px;
       }
       .card {
@@ -433,6 +400,115 @@
         margin-bottom: 8px;
       }
 
+
+      /* ── showcase (text + image side by side) ── */
+      .showcase {
+        display: grid;
+        grid-template-columns: 1fr 1.6fr;
+        gap: 40px;
+        align-items: center;
+      }
+      .showcase + .showcase {
+        margin-top: 56px;
+      }
+      .showcase.flip {
+        grid-template-columns: 1.6fr 1fr;
+      }
+      .showcase.flip > :first-child {
+        order: 2;
+      }
+      .showcase h3 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+      .showcase p {
+        margin: 0 0 10px;
+        color: var(--muted);
+      }
+
+      /* ── gallery ── */
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+      }
+      .gallery figure {
+        margin: 0;
+      }
+      .gallery .shot {
+        border-radius: 10px;
+        box-shadow: 0 6px 18px rgba(29, 35, 64, 0.08);
+      }
+      .gallery figcaption {
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      /* ── formats table ── */
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+      }
+      table.formats {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 15px;
+      }
+      table.formats th,
+      table.formats td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+      }
+      table.formats tr:last-child td {
+        border-bottom: 0;
+      }
+      table.formats th {
+        background: var(--bg-alt);
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      table.formats td:first-child {
+        white-space: nowrap;
+        font-weight: 600;
+      }
+      .badge {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        font-size: 11px;
+        font-weight: 600;
+        vertical-align: 2px;
+      }
+
+      /* ── FAQ ── */
+      .faq details {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 0 20px;
+      }
+      .faq details + details {
+        margin-top: 10px;
+      }
+      .faq summary {
+        padding: 14px 0;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .faq details p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
       /* ── privacy ── */
       .privacy ul {
         margin: 0;
@@ -460,13 +536,20 @@
 
       @media (max-width: 860px) {
         .hero {
-          grid-template-columns: 1fr;
-          gap: 32px;
           padding-top: 48px;
           padding-bottom: 48px;
         }
-        .features {
+        .features,
+        .gallery {
           grid-template-columns: 1fr 1fr;
+        }
+        .showcase,
+        .showcase.flip {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+        .showcase.flip > :first-child {
+          order: 0;
         }
         .methods {
           grid-template-columns: 1fr;
@@ -476,7 +559,8 @@
         .hero h1 {
           font-size: 34px;
         }
-        .features {
+        .features,
+        .gallery {
           grid-template-columns: 1fr;
         }
         .bar nav a {
@@ -500,7 +584,9 @@
         </a>
         <nav>
           <a href="#features"><span class="ja">機能</span><span class="en">Features</span></a>
+          <a href="#gallery"><span class="ja">図の例</span><span class="en">Examples</span></a>
           <a href="#install"><span class="ja">導入方法</span><span class="en">Install</span></a>
+          <a href="#faq">FAQ</a>
           <a href="#privacy"><span class="ja">プライバシー</span><span class="en">Privacy</span></a>
           <a href="https://github.com/msmsrep/TextToSvgDiagramsForExcel">GitHub</a>
           <span class="lang-switch" role="group" aria-label="Language">
@@ -513,65 +599,37 @@
 
     <main>
       <div class="wrap hero">
-        <div>
-          <h1>Text-to-SVG Diagrams for Excel</h1>
-          <p class="lead">
-            <span class="ja">
-              Mermaid 記法で書いたフローチャート・シーケンス図・ER 図などを、そのまま Excel
-              のシートに画像として挿入できる Office アドインです。処理はすべてローカルで完結します。
-            </span>
-            <span class="en">
-              An Office Add-in that turns Mermaid text into flowcharts, sequence diagrams, ER
-              diagrams and more, and inserts them into your Excel sheet as images. Everything runs
-              locally.
-            </span>
-          </p>
-          <div class="cta">
-            <a class="btn primary" href="#install"
-              ><span class="ja">導入方法を見る</span><span class="en">How to install</span></a
-            >
-            <a class="btn" href="https://github.com/msmsrep/TextToSvgDiagramsForExcel">GitHub</a>
-          </div>
+        <h1>Text-to-SVG Diagrams for Excel</h1>
+        <p class="lead">
+          <span class="ja">
+            Mermaid 記法で書いたフローチャート・シーケンス図・ER 図などを、そのまま Excel
+            のシートに画像として挿入できる Office アドインです。処理はすべてローカルで完結します。
+          </span>
+          <span class="en">
+            An Office Add-in that turns Mermaid text into flowcharts, sequence diagrams, ER
+            diagrams and more, and inserts them into your Excel sheet as images. Everything runs
+            locally.
+          </span>
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="#install"
+            ><span class="ja">導入方法を見る</span><span class="en">How to install</span></a
+          >
+          <a class="btn" href="#gallery"><span class="ja">図の例を見る</span><span class="en">See examples</span></a>
+          <a class="btn" href="https://github.com/msmsrep/TextToSvgDiagramsForExcel">GitHub</a>
         </div>
-
-        <div class="demo" aria-label="Mermaid code and the rendered diagram">
-          <pre><span class="k">graph</span> LR
-    A[Start] --&gt; B{Condition}
-    B --&gt;|Yes| C[Process A]
-    B --&gt;|No| D[Process B]
-    C --&gt; E[End]
-    D --&gt; E</pre>
-          <div class="arrow">
-            <span class="ja">↓ プレビューして Excel に挿入</span
-            ><span class="en">↓ Preview, then insert into Excel</span>
-          </div>
-          <svg viewBox="0 0 520 170" role="img" aria-label="Rendered flowchart">
-            <defs>
-              <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-                <path class="head" d="M0,0 L10,5 L0,10 z" />
-              </marker>
-            </defs>
-            <!-- edges -->
-            <path class="edge" d="M78,85 L118,85" marker-end="url(#ah)" />
-            <path class="edge" d="M196,72 C230,40 250,40 290,40" marker-end="url(#ah)" />
-            <path class="edge" d="M196,98 C230,130 250,130 290,130" marker-end="url(#ah)" />
-            <path class="edge" d="M382,40 C420,40 430,70 448,78" marker-end="url(#ah)" />
-            <path class="edge" d="M382,130 C420,130 430,100 448,92" marker-end="url(#ah)" />
-            <text class="lbl" x="236" y="38">Yes</text>
-            <text class="lbl" x="236" y="134">No</text>
-            <!-- nodes -->
-            <rect class="node" x="8" y="66" width="70" height="38" rx="4" />
-            <text x="43" y="85">Start</text>
-            <path class="node" d="M157,45 L197,85 L157,125 L117,85 z" />
-            <text x="157" y="85">Condition</text>
-            <rect class="node" x="290" y="21" width="92" height="38" rx="4" />
-            <text x="336" y="40">Process A</text>
-            <rect class="node" x="290" y="111" width="92" height="38" rx="4" />
-            <text x="336" y="130">Process B</text>
-            <rect class="node" x="448" y="66" width="64" height="38" rx="4" />
-            <text x="480" y="85">End</text>
-          </svg>
-        </div>
+        <figure class="shot">
+          <img
+            src="images/demo-insert.gif"
+            width="960"
+            height="540"
+            alt="Open the task pane from the Home tab, type Mermaid code, watch the preview update, and click Insert to Excel to place the diagram on the sheet"
+          />
+        </figure>
+        <p class="caption">
+          <span class="ja">[Open Text-to-SVG] でタスクペインを開き、コードを書いて [Insert to Excel]。</span>
+          <span class="en">Open the task pane, type the code, click Insert to Excel.</span>
+        </p>
       </div>
 
       <section id="features" class="alt">
@@ -617,6 +675,13 @@
               </p>
             </div>
             <div class="card">
+              <h3><span class="ja">編集できる図形</span><span class="en">Editable shapes</span><span class="badge"><span class="ja">試験的</span><span class="en">Beta</span></span></h3>
+              <p>
+                <span class="ja">フローチャートを Excel の図形とコネクタで挿入。アドインがない人も図を直せます。</span>
+                <span class="en">Insert flowcharts as Excel shapes and connectors, so people without the add-in can edit them too.</span>
+              </p>
+            </div>
+            <div class="card">
               <h3><span class="ja">あらゆる図に対応</span><span class="en">Every diagram type</span></h3>
               <p>
                 <span class="ja"
@@ -636,11 +701,129 @@
                 <span class="en">Rendering and inserting happen in the task pane. Nothing you type is sent anywhere.</span>
               </p>
             </div>
+            <div class="card">
+              <h3><span class="ja">Web 版でもデスクトップ版でも</span><span class="en">Web and desktop</span></h3>
+              <p>
+                <span class="ja">Excel for the web と Windows 版 Excel の両方で使えます。</span>
+                <span class="en">Works in Excel for the web and Excel on Windows.</span>
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section id="install">
+      <section id="reedit">
+        <div class="wrap">
+          <div class="showcase">
+            <div>
+              <h2><span class="ja">挿入したあとも、コードで直せる</span><span class="en">Fix it later, in code</span></h2>
+              <p>
+                <span class="ja">挿入した図には Mermaid コードが代替テキストとして保存されます。<span class="path">[Sheet diagram]</span> で図を選ぶとコードが読み込まれ、書き換えて <span class="path">[Insert to Excel]</span> を押すと同じ位置の図が差し替わります。</span>
+                <span class="en">Each inserted diagram keeps its Mermaid code in its alt text. Pick it in <span class="path">Sheet diagram</span>, edit the code and click <span class="path">Insert to Excel</span>; the diagram is replaced in place.</span>
+              </p>
+              <p>
+                <span class="ja">ブックを渡した相手も、アドインがあれば同じように編集できます。</span>
+                <span class="en">Anyone you share the workbook with can do the same if they have the add-in.</span>
+              </p>
+            </div>
+            <figure class="shot">
+              <img
+                src="images/demo-reedit.gif"
+                width="960"
+                height="540"
+                loading="lazy"
+                alt="Select Picture 1 in Sheet diagram, rename Process B to Retry, add a dotted edge, and click Insert to Excel to replace the diagram on the sheet"
+              />
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="gallery" class="alt">
+        <div class="wrap">
+          <h2><span class="ja">いろいろな図が書ける</span><span class="en">Many kinds of diagrams</span></h2>
+          <p class="sub">
+            <span class="ja">タスクペインの実際の画面です。どれも数行のテキストで書けます。</span>
+            <span class="en">Real task pane screenshots. Each one is a few lines of text.</span>
+          </p>
+          <div class="gallery">
+            <figure>
+              <div class="shot"><img src="images/pane-sequence.png" width="380" height="560" loading="lazy" alt="Sequence diagram of a user placing an order" /></div>
+              <figcaption><span class="ja">シーケンス図</span><span class="en">Sequence diagram</span></figcaption>
+            </figure>
+            <figure>
+              <div class="shot"><img src="images/pane-er.png" width="380" height="696" loading="lazy" alt="ER diagram of customers, orders, line items and products" /></div>
+              <figcaption><span class="ja">ER 図</span><span class="en">ER diagram</span></figcaption>
+            </figure>
+            <figure>
+              <div class="shot"><img src="images/pane-gantt.png" width="380" height="564" loading="lazy" alt="Gantt chart of a release plan" /></div>
+              <figcaption><span class="ja">ガントチャート</span><span class="en">Gantt chart</span></figcaption>
+            </figure>
+            <figure>
+              <div class="shot"><img src="images/pane-class.png" width="380" height="727" loading="lazy" alt="Class diagram of Order and Item" /></div>
+              <figcaption><span class="ja">クラス図</span><span class="en">Class diagram</span></figcaption>
+            </figure>
+            <figure>
+              <div class="shot"><img src="images/pane-state.png" width="380" height="703" loading="lazy" alt="State diagram of a document review" /></div>
+              <figcaption><span class="ja">状態遷移図</span><span class="en">State diagram</span></figcaption>
+            </figure>
+            <figure>
+              <div class="shot"><img src="images/pane-pie.png" width="380" height="568" loading="lazy" alt="Pie chart of sales by region" /></div>
+              <figcaption><span class="ja">円グラフ</span><span class="en">Pie chart</span></figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="formats">
+        <div class="wrap">
+          <h2><span class="ja">挿入形式</span><span class="en">Output formats</span></h2>
+          <p class="sub">
+            <span class="ja">[Insert to Excel] の左のリストで選びます。迷ったら PNG で大丈夫です。</span>
+            <span class="en">Choose in the list next to Insert to Excel. If unsure, PNG is fine.</span>
+          </p>
+          <div class="table-wrap">
+            <table class="formats">
+              <thead>
+                <tr>
+                  <th><span class="ja">形式</span><span class="en">Format</span></th>
+                  <th><span class="ja">向いている用途</span><span class="en">Best for</span></th>
+                  <th><span class="ja">ダウンロード</span><span class="en">Download</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>PNG</td>
+                  <td><span class="ja">どの環境でもきれいに表示。既定の形式です。</span><span class="en">Looks right everywhere. The default.</span></td>
+                  <td>✓</td>
+                </tr>
+                <tr>
+                  <td>JPEG</td>
+                  <td><span class="ja">ファイルサイズを抑えたいとき。背景は白になります。</span><span class="en">Smaller files. The background becomes white.</span></td>
+                  <td>✓</td>
+                </tr>
+                <tr>
+                  <td>SVG</td>
+                  <td><span class="ja">拡大しても粗くならないベクター画像。SVG の挿入に対応した Excel が必要です。</span><span class="en">Vector image that stays sharp when zoomed. Needs an Excel version that supports SVG insertion.</span></td>
+                  <td>✓</td>
+                </tr>
+                <tr>
+                  <td>SVG (for shape conversion)<span class="badge"><span class="ja">試験的</span><span class="en">Beta</span></span></td>
+                  <td><span class="ja">Excel の [図形に変換] 用に整えた SVG。変換後は文字や色を Excel で直接編集できます。</span><span class="en">SVG tidied up for Excel's Convert to Shape. After converting, edit text and colors directly in Excel.</span></td>
+                  <td>✓</td>
+                </tr>
+                <tr>
+                  <td>Shapes (editable)<span class="badge"><span class="ja">試験的</span><span class="en">Beta</span></span></td>
+                  <td><span class="ja">フローチャートを Excel の図形とコネクタで挿入。図形を動かすと線もついてきます。フローチャート専用です。</span><span class="en">Inserts a flowchart as Excel shapes and connectors; lines follow when you move shapes. Flowcharts only.</span></td>
+                  <td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="install" class="alt">
         <div class="wrap">
           <h2><span class="ja">導入方法</span><span class="en">Install</span></h2>
           <p class="sub">
@@ -735,13 +918,14 @@
         </div>
       </section>
 
-      <section id="usage" class="alt">
+      <section id="usage">
         <div class="wrap">
           <h2><span class="ja">使い方</span><span class="en">How to use</span></h2>
           <p class="sub">
             <span class="ja">記法の詳細は <a href="https://mermaid.js.org/intro/">Mermaid の公式ドキュメント</a> を参照してください。</span>
             <span class="en">See the <a href="https://mermaid.js.org/intro/">Mermaid documentation</a> for the syntax.</span>
           </p>
+          <div class="showcase">
           <ol class="usage">
             <li>
               <span class="ja">図を挿入したいセルを選択し、<span class="path">[Open Text-to-SVG]</span> でタスクペインを開きます。</span>
@@ -760,6 +944,46 @@
               <span class="en">To change it later, pick the diagram in <span class="path">Sheet diagram</span>; its code loads back in so you can edit and replace it.</span>
             </li>
           </ol>
+          <figure class="shot">
+            <img
+              src="images/hero.png"
+              width="1280"
+              height="720"
+              loading="lazy"
+              alt="Excel with a flowchart inserted on the sheet and the Text-to-SVG task pane open on the right, showing the Mermaid code and its preview"
+            />
+          </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="alt faq">
+        <div class="wrap">
+          <h2><span class="ja">よくある質問</span><span class="en">FAQ</span></h2>
+          <p class="sub">
+            <span class="ja">解決しないときは <a href="https://github.com/msmsrep/TextToSvgDiagramsForExcel/issues">GitHub Issues</a> へどうぞ。</span>
+            <span class="en">Still stuck? Ask on <a href="https://github.com/msmsrep/TextToSvgDiagramsForExcel/issues">GitHub Issues</a>.</span>
+          </p>
+          <details>
+            <summary><span class="ja">インターネット接続は必要ですか？</span><span class="en">Do I need an internet connection?</span></summary>
+            <p><span class="ja">アドイン本体（HTML / JavaScript）をこのサイトから読み込むため、タスクペインを開くときは接続が必要です。入力したコードや図はどこにも送信されません。</span><span class="en">Yes, to load the add-in itself (HTML / JavaScript) from this site when the task pane opens. Your code and diagrams are never sent anywhere.</span></p>
+          </details>
+          <details>
+            <summary><span class="ja">SVG を選ぶとエラーになります。</span><span class="en">Inserting SVG fails.</span></summary>
+            <p><span class="ja">お使いの Excel が SVG の挿入（ImageCoercion 1.2）に対応していません。PNG か JPEG を選んでください。</span><span class="en">Your Excel version doesn't support SVG insertion (ImageCoercion 1.2). Use PNG or JPEG instead.</span></p>
+          </details>
+          <details>
+            <summary><span class="ja">Shapes (editable) で「flowcharts only」と表示されます。</span><span class="en">Shapes (editable) says "flowcharts only".</span></summary>
+            <p><span class="ja">この形式はフローチャート（<code>graph</code> / <code>flowchart</code>）専用です。ほかの図は PNG などで挿入してください。</span><span class="en">That format supports flowcharts (<code>graph</code> / <code>flowchart</code>) only. Insert other diagrams as PNG or another image format.</span></p>
+          </details>
+          <details>
+            <summary><span class="ja">[Sheet diagram] に図が出てきません。</span><span class="en">My diagram isn't listed in Sheet diagram.</span></summary>
+            <p><span class="ja">一覧には、アクティブなシート上でこのアドインが挿入した図だけが出ます。図のあるシートを開いてから、リストをもう一度開いてください。代替テキストのタイトル（Mermaid Diagram）を書き換えた図は対象外になります。</span><span class="en">The list shows only diagrams this add-in inserted on the active sheet. Switch to that sheet and open the list again. Diagrams whose alt text title (Mermaid Diagram) was changed are not listed.</span></p>
+          </details>
+          <details>
+            <summary><span class="ja">旧名「Mermaid for Excel」から移行するには？</span><span class="en">How do I move from "Mermaid for Excel"?</span></summary>
+            <p><span class="ja"><a href="https://github.com/msmsrep/TextToSvgDiagramsForExcel/blob/main/docs/migration.md">移行手順</a>を参照してください。</span><span class="en">See the <a href="https://github.com/msmsrep/TextToSvgDiagramsForExcel/blob/main/docs/migration.md">migration guide</a>.</span></p>
+          </details>
         </div>
       </section>
 

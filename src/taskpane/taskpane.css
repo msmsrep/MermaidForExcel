@@ -101,20 +101,22 @@ textarea {
 }
 
 /* ── Buttons ── */
+/* In a narrow pane, Download wraps below rather than squeezing the select. */
 .buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   flex-shrink: 0;
 }
 
 button {
-  flex: 1;
-  padding: 2px 4px;
+  padding: 6px 12px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
   transition: background 0.1s;
 }
 
@@ -141,21 +143,29 @@ button {
 /* Format select and insert button are joined into one control. */
 .insert-group {
   display: flex;
-  flex: 1;
+  flex: 1 1 200px;
+  min-width: 0;
 }
+/* Long labels like "SVG (for shape conversion)" are cut off with an ellipsis
+   instead of widening the select and squeezing the buttons. */
 #format-select {
+  flex: 0 1 auto;
+  min-width: 6em;
+  max-width: 55%;
   padding: 4px 6px;
   border-right: none;
   border-radius: 4px 0 0 4px;
   background: #f3f2f1;
-  font-size: 8px;
   font-weight: 600;
+  text-overflow: ellipsis;
   cursor: pointer;
-  flex-shrink: 0;
-  height: 100%;
 }
 #insert-btn {
+  flex: 1;
   border-radius: 0 4px 4px 0;
+}
+#download-btn {
+  flex: 1 0 auto;
 }
 
 #error {
