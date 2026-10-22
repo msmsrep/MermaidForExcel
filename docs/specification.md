@@ -48,13 +48,15 @@ ImageCoercion 1.2 をマニフェストに宣言しないのは、非対応環�
 |---|---|---|---|
 | 1 | タイトル | — | 「Text-to-SVG Diagrams for Excel」 |
 | 2 | シート図形選択 | `sheet-diagram-select` | ラベル「Sheet diagram」。先頭は `(No diagram selected)`（値は空）。以降にアクティブシート上の Mermaid 図形を図形名で列挙 |
-| 3 | Mermaid 入力欄 | `mermaid-input` | 等幅フォントの textarea（初期高さ 100px、スペルチェック無効）。初期値はサンプルのフローチャート（§3.1） |
-| 4 | スプリッタ | `splitter` | 入力欄とプレビューの境界。ドラッグで入力欄の高さを変更（§4.7） |
-| 5 | 形式選択 | `format-select` | `PNG`（既定）/ `JPEG` / `SVG` / `SVG (for shape conversion)`（値 `svg-office`）/ `Shapes (editable)`（値 `shapes`） |
-| 6 | 挿入ボタン | `insert-btn` | 「Insert to Excel」。初期状態は無効 |
-| 7 | ダウンロードボタン | `download-btn` | 「Download」。初期状態は無効。形式が `Shapes (editable)` の間も無効 |
-| 8 | エラー表示 | `error` | エラーメッセージを赤字で表示 |
-| 9 | プレビュー | `preview` | レンダリング結果の SVG を表示（最小高さ 120px、はみ出しはスクロール）。入力が空のときは「Type Mermaid code」を表示 |
+| 3 | 生成する図の種類 | `table-kind-select` | ラベル「Code from selected cells」。`Auto`（既定）/ `Flowchart` / `Gantt` / `Pie`。各選択肢に列の並びを併記 |
+| 4 | 生成ボタン | `generate-btn` | 「Generate」。選択セルから Mermaid コードを生成する（§4.10） |
+| 5 | Mermaid 入力欄 | `mermaid-input` | 等幅フォントの textarea（初期高さ 100px、スペルチェック無効）。初期値はサンプルのフローチャート（§3.1） |
+| 6 | スプリッタ | `splitter` | 入力欄とプレビューの境界。ドラッグで入力欄の高さを変更（§4.7） |
+| 7 | 形式選択 | `format-select` | `PNG`（既定）/ `JPEG` / `SVG` / `SVG (for shape conversion)`（値 `svg-office`）/ `Shapes (editable)`（値 `shapes`） |
+| 8 | 挿入ボタン | `insert-btn` | 「Insert to Excel」。初期状態は無効 |
+| 9 | ダウンロードボタン | `download-btn` | 「Download」。初期状態は無効。形式が `Shapes (editable)` の間も無効 |
+| 10 | エラー表示 | `error` | エラーメッセージを赤字で表示 |
+| 11 | プレビュー | `preview` | レンダリング結果の SVG を表示（最小高さ 120px、はみ出しはスクロール）。入力が空のときは「Type Mermaid code」を表示 |
 
 形式選択は挿入とダウンロードの両方に適用される。形式を変更したときもボタンの有効・無効を更新する。
 
@@ -255,6 +257,37 @@ Excel の「図形に変換」で文字・矢印・色がずれないよう、�
 4. エッジラベルを `addTextBox` で作る。
 5. 図形が 2 個以上なら `addGroup` でまとめる（1 個ならそのまま）。まとめた図形に位置・名前・代替テキストを設定し、差し替え時は元図形を削除して `sync` する。図形が 0 個なら `The diagram has no shapes.` エラーとする。
 
+### 4.10 選択セルからのコード生成（`excelTable.ts` / `tableToMermaid.ts`）
+
+[Generate] で、選択したセル範囲の表から Mermaid コードを作り、入力欄を置き換えてすぐに描画する（デバウンス待ちの描画は取り消す）。生成したコードは新しい図として扱い、シート図形選択を `(No diagram selected)` に戻す（挿入しても既存の図を差し替えない）。失敗時は `Generate error: <メッセージ>` を表示し、入力欄は変えない。
+
+**読み込み**（`readSelection`）:
+
+1. `getSelectedRange().getUsedRangeOrNullObject(true)` で、選択範囲のうち値のあるセルだけを対象にする（A:C のような列全体の選択に対応）。`rowCount` と `rowIndex` を読んで `sync` する。
+2. この `sync` が失敗した場合（図形が選択されているなど）は `Select a cell range on the sheet.`、値のあるセルがなければ `The selection is empty.`、500 行を超えれば `The selection has more than 500 rows.` エラーとする。
+3. `values` / `text`（表示文字列）/ `numberFormat` を読み込む。
+
+**セルの解釈**:
+
+| 値 | 解釈 |
+|---|---|
+| 数値で、表示形式に `y` / `m` / `d` を含む（引用符内・`\` でエスケープした文字・`[...]` は除く） | 日付。1900 年日付システムのシリアル値として `YYYY-MM-DD` に変換し、時刻は切り捨てる |
+| その他の数値 | 数値。ラベルには表示文字列を使う（列幅不足で `####` のときは値） |
+| `YYYY-MM-DD` / `YYYY/M/D` / `YYYY.M.D` の文字列（実在する日付のみ） | 日付 |
+| その他の文字列・真偽値 | 文字列（前後の空白を除く） |
+
+すべてのセルが空の行は無視する。列が 2 列未満なら `Select at least two columns.` エラーとする。
+
+**種類の判定**（`Auto`）: 1 行目を除いた（1 行しかなければその行の）2 列目の空でないセルが、すべて日付ならガントチャート、すべて数値なら円グラフ、それ以外はフローチャート。
+
+**見出し行**: ガントチャートと円グラフでは、1 行目の 2 列目が期待する型（日付 / 数値）でなければ見出しとして除く。データ行が残らなければ `The selection has no data rows.` エラーとする。フローチャートでは見出しを判定せず、すべての行をデータとして扱う。
+
+| 種類 | 列 | 出力 |
+|---|---|---|
+| Flowchart | 親 \| 子 \| (エッジラベル) | `graph TD`。ノード ID は出現順に `n1`, `n2`, …。同じ表示文字列は同じノードとし、初出時だけ `n1["ラベル"]` と書く。親と子があれば `-->`（ラベルがあれば `-->\|"ラベル"\|`）、片方だけならそのノードだけを置く。`"` は `#quot;`、改行は `<br>` に置き換える |
+| Gantt | タスク \| 開始日 \| 終了日または日数 \| (セクション) | `gantt` / `dateFormat YYYY-MM-DD` / `inclusiveEndDates`（終了日を含む）。4 列目の値が変わるたびに `section` 行を入れる。タスク名の `:` は全角の `：`、改行は空白に置き換える。タスク名が空、開始日が日付でない、終了日が日付でも正の数値でもない行は `Row <行番号>: ...` エラーとする（行番号はシートの行番号） |
+| Pie | ラベル \| 値 | `pie` と `"ラベル" : 値`。値には表示文字列ではなく数値そのものを使う。ラベルの `"` は `'` に、改行は空白に置き換える。値が数値でない行は `Row <行番号>: the value must be a number.` エラーとする |
+
 ---
 
 ## 5. データ仕様
@@ -317,13 +350,15 @@ Vitest（jsdom 環境）で `test/*.test.ts` を実行する。設定は `vitest
 |---|---|---|
 | `util.test.ts` | `util.ts` | そのまま実行 |
 | `excelShapes.test.ts` | §4.3 / §4.4 / §4.9 の Excel 操作 | `Excel` / `Office` グローバルをフェイク（`test/fakes/office.ts`）に差し替え |
+| `excelTable.test.ts` | §4.10 の選択範囲の読み込み | 同上 |
+| `tableToMermaid.test.ts` | §4.10 のコード生成 | そのまま実行 |
 | `officeSvg.test.ts` | §4.8 | SVG の座標・計測 API をスタブ（`test/fakes/svgGeometry.ts`） |
 | `flowchartModel.test.ts` | §4.9 の図形モデル作成 | 同上 |
 | `svgUtil.test.ts` | 行列・色の変換 | そのまま実行 |
 | `image.test.ts` | §4.6 | `Image` と Canvas をモック |
 | `render.test.ts` | §4.1 / §4.2 / §4.4 の mermaid 呼び出し | `mermaid` をモック |
 | `splitter.test.ts` | §4.7 | 要素の `offsetHeight` をスタブ |
-| `taskpane.test.ts` | §3〜§4.5 の UI 動作 | `taskpane.html` を読み込み、Excel 操作・描画・画像化をモック |
+| `taskpane.test.ts` | §3〜§4.5 / §4.10 の UI 動作 | `taskpane.html` を読み込み、Excel 操作・描画・画像化をモック |
 | `scripts.test.ts` | §6.1 のバージョン反映、§6.2 | 一時ディレクトリにコピーしたプロジェクトで実行（Node 環境） |
 
 mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）、`watch` / `serve` モード、Excel 上での動作は自動テストの対象外。jsdom は `<svg>` 内の `<style>` を適用しないため、§4.8 / §4.9 のテストではスタイルを `<svg>` の外に置く。
@@ -381,3 +416,7 @@ mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）�
    - 図形に収まらないラベル（§4.9）は別のテキストボックスになるため、ノードだけを動かすとラベルが残る。
    - 六角形には上下の辺の中央に接続ポイントがないため、上下から来るエッジは角に接続される。
    - §4.9 の表にない図形の接続ポイントは「上から反時計回りに等間隔」と仮定している。
+5. **選択セルからのコード生成**（§4.10）:
+   - 1904 年日付システムのブックでは、日付が 4 年と 1 日ずれる（Office.js でブックの日付システムを取得できないため）。
+   - 図はアクティブセルに挿入されるため、表を選択したまま挿入すると図が表に重なる。
+   - フローチャートでは見出し行を判定しないため、見出しを含めて選択するとそれもノードになる。

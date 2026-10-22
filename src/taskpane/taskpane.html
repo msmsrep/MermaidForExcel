@@ -16,6 +16,17 @@
       <option value="">(No diagram selected)</option>
     </select>
 
+    <label class="field-label" for="table-kind-select">Code from selected cells</label>
+    <div class="table-group">
+      <select id="table-kind-select" aria-label="Diagram type to generate">
+        <option value="auto">Auto</option>
+        <option value="flowchart">Flowchart (parent | child | label)</option>
+        <option value="gantt">Gantt (task | start | end or days | section)</option>
+        <option value="pie">Pie (label | value)</option>
+      </select>
+      <button id="generate-btn" class="action-btn">Generate</button>
+    </div>
+
     <textarea
       id="mermaid-input"
       aria-label="Mermaid code"

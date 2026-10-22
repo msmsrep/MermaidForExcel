@@ -83,6 +83,16 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
   /** Every shape ever added, including grouped and deleted ones. */
   const allShapes: ShapeState[] = [...shapes];
   const activeCell = { left: 10, top: 20 };
+  /**
+   * The used part of the selected range, or null when it has no values;
+   * "shape" makes the selection a shape, so reading it fails.
+   */
+  let selection: {
+    values: unknown[][];
+    text: string[][];
+    numberFormat: string[][];
+    rowIndex: number;
+  } | null | "shape" = null;
   const activatedHandlers: Array<() => unknown> = [];
   let syncCount = 0;
 
@@ -240,9 +250,36 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
         onActivated: { add: vi.fn((h: () => unknown) => { activatedHandlers.push(h); }) },
       },
       getActiveCell: () => ({ ...activeCell, load: vi.fn() }),
+      getSelectedRange: () => ({ getUsedRangeOrNullObject: selectedUsedRange }),
     },
-    sync: vi.fn(async () => { syncCount++; }),
+    sync: vi.fn(async () => {
+      if (pendingSyncError) {
+        const e = pendingSyncError;
+        pendingSyncError = undefined;
+        throw e;
+      }
+      syncCount++;
+    }),
   };
+  /** Error thrown by the next sync, as Excel reports queued failures there. */
+  let pendingSyncError: Error | undefined;
+
+  function selectedUsedRange() {
+    if (selection === "shape") {
+      pendingSyncError = new Error("InvalidSelection");
+      return { load: vi.fn() };
+    }
+    const s = selection;
+    return {
+      isNullObject: s === null,
+      rowCount: s?.values.length ?? 0,
+      rowIndex: s?.rowIndex ?? 0,
+      values: s?.values,
+      text: s?.text,
+      numberFormat: s?.numberFormat,
+      load: vi.fn(),
+    };
+  }
 
   const Excel = {
     run: vi.fn(async (fn: (c: typeof ctx) => unknown) => fn(ctx)),
@@ -292,6 +329,7 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
     activatedHandlers,
     get syncCount() { return syncCount; },
     setSvgSupported(v: boolean) { svgSupported = v; },
+    setSelection(s: typeof selection) { selection = s; },
     /** Installs the fakes as the `Excel` and `Office` globals. */
     install() {
       vi.stubGlobal("Excel", Excel);

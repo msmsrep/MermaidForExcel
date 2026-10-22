@@ -17,6 +17,7 @@ Mermaid プロジェクトとは関係のない非公式のツールです。旧
 - **リアルタイムプレビュー** — Mermaid記法を入力すると、タスクペイン内で自動的にダイアグラムが描画されます
 - **Excelへの挿入** — プレビューした画像をワンクリックでアクティブセルの位置に挿入します
 - **再編集** — 挿入した図の Mermaid コードは代替テキストに保存され、[Sheet diagram] から選んで編集・差し替えできます
+- **選択セルからコード生成** — 表を選択して [Generate] を押すと、フローチャート（`親 | 子 | ラベル`）・ガントチャート（`タスク | 開始日 | 終了日または日数 | セクション`）・円グラフ（`項目 | 値`）のコードを作ります
 - **PNG/JPEG/SVG出力対応** — 保存形式を選択してダウンロードすることもできます
 - **編集できる図形（試験的）** — フローチャートを Excel の図形とコネクタで挿入する `Shapes (editable)` と、Excel の「図形に変換」向けに整えた SVG を挿入する `SVG (for shape conversion)` を選べます。アドインを持たない人も図を編集できます
 - **多様なダイアグラム種別** — フローチャート、シーケンス図、クラス図、ER図、ガントチャートなど[Mermaid](https://github.com/mermaid-js/mermaid)がサポートするすべての記法が利用可能です
@@ -42,6 +43,8 @@ TextToSvgDiagramsForExcel/
     flowchartModel.ts      ← フローチャートの SVG → Excel 図形モデル
     svgUtil.ts             ← 行列・色の共通処理
     excelShapes.ts         ← Excel 図形の挿入・差し替え・一覧取得
+    excelTable.ts          ← 選択セルの読み込み
+    tableToMermaid.ts      ← 表 → Mermaid コードの生成
     splitter.ts            ← 入力欄とプレビューのスプリッタ
   test/                    ← Vitest のテスト（Office.js・mermaid・Canvas はモック）
   dist/                    ← ビルド成果物（コミットしない。GitHub Actions でデプロイ）
