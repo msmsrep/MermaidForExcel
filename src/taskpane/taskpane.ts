@@ -6,6 +6,7 @@ import {
   isSvgInsertSupported,
   listDiagrams,
   onSheetActivated,
+  watchDiagramSelection,
 } from "./excelShapes";
 import { readSelection } from "./excelTable";
 import { extractFlowchart } from "./flowchartModel";
@@ -43,11 +44,21 @@ Office.onReady(() => {
   const formatSelect = byId<HTMLSelectElement>("format-select");
   const tableKindSelect = byId<HTMLSelectElement>("table-kind-select");
   const generateBtn = byId<HTMLButtonElement>("generate-btn");
+  const loadConfirm = byId<HTMLDivElement>("load-confirm");
+  const loadConfirmText = byId<HTMLSpanElement>("load-confirm-text");
+  const loadConfirmReplace = byId<HTMLButtonElement>("load-confirm-replace");
+  const loadConfirmKeep = byId<HTMLButtonElement>("load-confirm-keep");
 
   let renderDebounceTimer: number | undefined;
   let renderRequestId = 0;
   let diagramItems: DiagramItem[] = [];
   let actionsEnabled = false;
+  // The diagram the editor holds; the dropdown shows it and Insert replaces it.
+  let currentDiagramId = "";
+  // Code last loaded from or inserted into a diagram (or the initial sample).
+  // Anything else in the editor is unsaved and asks before being replaced.
+  let savedCode = input.value.trim();
+  let pendingLoad: DiagramItem | undefined;
 
   const selectedFormat = () => formatSelect.value as OutputFormat;
 
@@ -60,6 +71,11 @@ Office.onReady(() => {
   formatSelect.addEventListener("change", () => setActionsEnabled(actionsEnabled));
 
   // ── Sheet diagram dropdown ─────────────────────────────────────────────────
+  function setCurrentDiagram(id: string) {
+    currentDiagramId = diagramItems.some((item) => item.id === id) ? id : "";
+    diagramSelect.value = currentDiagramId;
+  }
+
   function updateDiagramOptions(items: DiagramItem[], selectedId = "") {
     diagramItems = items;
     diagramSelect.innerHTML = "";
@@ -76,18 +92,68 @@ Office.onReady(() => {
       diagramSelect.appendChild(option);
     }
 
-    diagramSelect.value =
-      selectedId && items.some((item) => item.id === selectedId) ? selectedId : "";
+    setCurrentDiagram(selectedId);
   }
 
-  async function refreshDiagramOptions(selectedId = diagramSelect.value) {
+  async function refreshDiagramOptions(selectedId = currentDiagramId) {
     try {
       updateDiagramOptions(await listDiagrams(), selectedId);
     } catch {
       // Ignore load failures so the main render/insert flow remains available.
       updateDiagramOptions([], "");
     }
+    try {
+      await watchDiagramSelection(diagramItems.map((item) => item.id), onDiagramSelected);
+    } catch {
+      // Without the events, the dropdown still loads diagrams.
+    }
   }
+
+  function loadDiagram(item: DiagramItem) {
+    hideLoadConfirm();
+    setCurrentDiagram(item.id);
+    input.value = item.altTextDescription;
+    savedCode = item.altTextDescription.trim();
+    window.clearTimeout(renderDebounceTimer);
+    void renderPreview();
+  }
+
+  /** Loads a diagram, first asking when that would discard unsaved code. */
+  function requestLoad(item: DiagramItem) {
+    const code = input.value.trim();
+    if (code === "" || code === savedCode || code === item.altTextDescription.trim()) {
+      loadDiagram(item);
+      return;
+    }
+    pendingLoad = item;
+    loadConfirmText.textContent =
+      `Load "${item.name}"? The code in the editor has unsaved changes and will be replaced.`;
+    loadConfirm.hidden = false;
+  }
+
+  function hideLoadConfirm() {
+    pendingLoad = undefined;
+    loadConfirm.hidden = true;
+  }
+
+  function onDiagramSelected(id: string) {
+    // Selecting the diagram being edited (e.g. to see it) keeps the edits.
+    if (id === currentDiagramId) {
+      hideLoadConfirm();
+      return;
+    }
+    const item = diagramItems.find((d) => d.id === id);
+    if (item) {
+      requestLoad(item);
+    }
+  }
+
+  loadConfirmReplace.addEventListener("click", () => {
+    if (pendingLoad) {
+      loadDiagram(pendingLoad);
+    }
+  });
+  loadConfirmKeep.addEventListener("click", hideLoadConfirm);
 
   diagramSelect.addEventListener("focus", () => {
     void refreshDiagramOptions();
@@ -96,14 +162,21 @@ Office.onReady(() => {
   diagramSelect.addEventListener("change", () => {
     const selected = diagramItems.find((item) => item.id === diagramSelect.value);
     if (!selected) {
+      // "(No diagram selected)": insert as a new diagram, keeping the code.
+      hideLoadConfirm();
+      currentDiagramId = "";
       return;
     }
-    input.value = selected.altTextDescription;
-    void renderPreview();
+    // Stay on the current diagram until the load actually happens.
+    diagramSelect.value = currentDiagramId;
+    requestLoad(selected);
   });
 
-  // Reset dropdown when the active sheet changes.
-  onSheetActivated(() => updateDiagramOptions([], "")).catch(() => {/* ignore */});
+  // Reload the list (and the selection events) for the newly active sheet.
+  onSheetActivated(() => {
+    hideLoadConfirm();
+    void refreshDiagramOptions("");
+  }).catch(() => {/* ignore */});
 
   // ── Preview ────────────────────────────────────────────────────────────────
   async function renderPreview() {
@@ -154,7 +227,8 @@ Office.onReady(() => {
     }
     input.value = code;
     // The generated code is a new diagram, so don't replace the selected one.
-    diagramSelect.value = "";
+    hideLoadConfirm();
+    setCurrentDiagram("");
     window.clearTimeout(renderDebounceTimer);
     await renderPreview();
   });
@@ -204,7 +278,7 @@ Office.onReady(() => {
   bindSvgAction(insertBtn, "Insert error", async (svgEl) => {
     const format = selectedFormat();
     const mermaidCode = input.value.trim();
-    const replaceId = diagramSelect.value || undefined;
+    const replaceId = currentDiagramId || undefined;
     let insertedShapeId: string;
 
     if (format === "shapes") {
@@ -230,6 +304,7 @@ Office.onReady(() => {
       insertedShapeId = await insertImageShape(image, mermaidCode, replaceId);
     }
 
+    savedCode = mermaidCode;
     await refreshDiagramOptions(insertedShapeId);
   });
 

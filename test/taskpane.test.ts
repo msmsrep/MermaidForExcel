@@ -6,6 +6,7 @@ import type { DiagramItem } from "../src/taskpane/excelShapes";
 const m = vi.hoisted(() => ({
   listDiagrams: vi.fn(),
   onSheetActivated: vi.fn(),
+  watchDiagramSelection: vi.fn(),
   isSvgInsertSupported: vi.fn(),
   insertImageShape: vi.fn(),
   insertSvgShape: vi.fn(),
@@ -22,6 +23,7 @@ const m = vi.hoisted(() => ({
 vi.mock("../src/taskpane/excelShapes", () => ({
   listDiagrams: m.listDiagrams,
   onSheetActivated: m.onSheetActivated,
+  watchDiagramSelection: m.watchDiagramSelection,
   isSvgInsertSupported: m.isSvgInsertSupported,
   insertImageShape: m.insertImageShape,
   insertSvgShape: m.insertSvgShape,
@@ -67,6 +69,10 @@ const diagramSelect = () => $<HTMLSelectElement>("sheet-diagram-select");
 const formatSelect = () => $<HTMLSelectElement>("format-select");
 const tableKindSelect = () => $<HTMLSelectElement>("table-kind-select");
 const generateBtn = () => $<HTMLButtonElement>("generate-btn");
+const loadConfirm = () => $<HTMLDivElement>("load-confirm");
+const loadConfirmText = () => $<HTMLSpanElement>("load-confirm-text").textContent;
+const replaceBtn = () => $<HTMLButtonElement>("load-confirm-replace");
+const keepBtn = () => $<HTMLButtonElement>("load-confirm-keep");
 const optionLabels = () => Array.from(diagramSelect().options, (o) => [o.value, o.textContent]);
 
 /** Lets pending promise chains (mocked async calls) settle. */
@@ -89,6 +95,17 @@ function type(code: string) {
 function selectDiagram(id: string) {
   diagramSelect().value = id;
   diagramSelect().dispatchEvent(new Event("change"));
+}
+
+/** Selects a shape on the sheet through the handler last given to watchDiagramSelection. */
+async function selectShape(id: string) {
+  const handler = m.watchDiagramSelection.mock.lastCall![1] as (id: string) => void;
+  handler(id);
+  await flush();
+}
+
+function activateSheet() {
+  (m.onSheetActivated.mock.calls[0][0] as () => void)();
 }
 
 function setFormat(format: "png" | "jpeg" | "svg" | "svg-office" | "shapes") {
@@ -117,6 +134,7 @@ beforeEach(() => {
   for (const fn of Object.values(m)) fn.mockReset();
   m.listDiagrams.mockResolvedValue([]);
   m.onSheetActivated.mockResolvedValue(undefined);
+  m.watchDiagramSelection.mockResolvedValue(undefined);
   m.isSvgInsertSupported.mockReturnValue(true);
   m.renderMermaid.mockResolvedValue(SVG);
   m.svgToRaster.mockResolvedValue(RASTER);
@@ -374,14 +392,190 @@ describe("sheet diagram dropdown", () => {
     expect(errorText()).toBe("");
   });
 
-  it("resets the list when another sheet is activated", async () => {
+  it("reloads the list without a selection when another sheet is activated", async () => {
     selectDiagram("id-1");
     await flush();
+    m.listDiagrams.mockResolvedValue([{ id: "id-9", name: "Other sheet", altTextDescription: "pie" }]);
 
-    const handler = m.onSheetActivated.mock.calls[0][0] as () => void;
-    handler();
-    expect(optionLabels()).toEqual([["", "(No diagram selected)"]]);
+    activateSheet();
+    await flush();
+    expect(optionLabels()).toEqual([["", "(No diagram selected)"], ["id-9", "Other sheet"]]);
     expect(diagramSelect().value).toBe("");
+    expect(m.watchDiagramSelection).toHaveBeenLastCalledWith(["id-9"], expect.any(Function));
+  });
+
+  it("asks before replacing unsaved code and keeps the current diagram until confirmed", async () => {
+    selectDiagram("id-1");
+    await flush();
+    type("graph TD\nX-->Z");
+    selectDiagram("id-2");
+    await flush();
+
+    expect(loadConfirm().hidden).toBe(false);
+    expect(diagramSelect().value).toBe("id-1");
+    expect(input().value).toBe("graph TD\nX-->Z");
+
+    await click(replaceBtn());
+    expect(loadConfirm().hidden).toBe(true);
+    expect(diagramSelect().value).toBe("id-2");
+    expect(input().value).toBe("pie\n\"a\": 1");
+  });
+});
+
+describe("selecting a diagram on the sheet", () => {
+  beforeEach(async () => {
+    m.listDiagrams.mockResolvedValue(DIAGRAMS);
+    await start();
+  });
+
+  it("watches the listed diagrams", () => {
+    expect(m.watchDiagramSelection).toHaveBeenCalledWith(["id-1", "id-2"], expect.any(Function));
+  });
+
+  it("re-watches the diagrams whenever the list is reloaded", async () => {
+    m.listDiagrams.mockResolvedValue([DIAGRAMS[1]]);
+    diagramSelect().dispatchEvent(new Event("focus"));
+    await flush();
+    expect(m.watchDiagramSelection).toHaveBeenLastCalledWith(["id-2"], expect.any(Function));
+  });
+
+  it("loads the selected diagram when the editor has no unsaved code", async () => {
+    m.renderMermaid.mockClear();
+    await selectShape("id-2");
+
+    expect(loadConfirm().hidden).toBe(true);
+    expect(diagramSelect().value).toBe("id-2");
+    expect(input().value).toBe("pie\n\"a\": 1");
+    expect(m.renderMermaid).toHaveBeenCalledWith("pie\n\"a\": 1");
+  });
+
+  it("loads another diagram without asking after loading one", async () => {
+    await selectShape("id-1");
+    await selectShape("id-2");
+    expect(loadConfirm().hidden).toBe(true);
+    expect(input().value).toBe("pie\n\"a\": 1");
+  });
+
+  it("loads without asking when the editor is empty", async () => {
+    type("");
+    await selectShape("id-1");
+    expect(loadConfirm().hidden).toBe(true);
+    expect(input().value).toBe("graph TD\nX-->Y");
+  });
+
+  it("asks before replacing unsaved code", async () => {
+    type("edited");
+    await selectShape("id-1");
+
+    expect(loadConfirm().hidden).toBe(false);
+    expect(loadConfirmText()).toContain('"Diagram 1"');
+    expect(input().value).toBe("edited");
+    expect(diagramSelect().value).toBe("");
+  });
+
+  it("loads the diagram when Replace is clicked", async () => {
+    type("edited");
+    await selectShape("id-1");
+    await click(replaceBtn());
+
+    expect(loadConfirm().hidden).toBe(true);
+    expect(input().value).toBe("graph TD\nX-->Y");
+    expect(diagramSelect().value).toBe("id-1");
+    await click(insertBtn());
+    expect(m.insertImageShape).toHaveBeenCalledWith(RASTER, "graph TD\nX-->Y", "id-1");
+  });
+
+  it("keeps the code and the current diagram when Keep is clicked", async () => {
+    type("edited");
+    await vi.advanceTimersByTimeAsync(250);
+    await selectShape("id-1");
+    await click(keepBtn());
+
+    expect(loadConfirm().hidden).toBe(true);
+    expect(input().value).toBe("edited");
+    expect(diagramSelect().value).toBe("");
+    await click(insertBtn());
+    expect(m.insertImageShape).toHaveBeenCalledWith(RASTER, "edited", undefined);
+  });
+
+  it("asks about the last selected diagram when several are selected", async () => {
+    type("edited");
+    await selectShape("id-1");
+    await selectShape("id-2");
+    await click(replaceBtn());
+    expect(input().value).toBe("pie\n\"a\": 1");
+  });
+
+  it("keeps edits when the diagram being edited is selected", async () => {
+    await selectShape("id-1");
+    type("graph TD\nX-->Z");
+    await selectShape("id-1");
+
+    expect(loadConfirm().hidden).toBe(true);
+    expect(input().value).toBe("graph TD\nX-->Z");
+  });
+
+  it("cancels the question when the diagram being edited is selected again", async () => {
+    await selectShape("id-1");
+    type("graph TD\nX-->Z");
+    await selectShape("id-2");
+    await selectShape("id-1");
+    expect(loadConfirm().hidden).toBe(true);
+    expect(input().value).toBe("graph TD\nX-->Z");
+  });
+
+  it("does not ask when the editor already holds the diagram's code", async () => {
+    type("graph TD\nX-->Y");
+    await selectShape("id-1");
+    expect(loadConfirm().hidden).toBe(true);
+    expect(diagramSelect().value).toBe("id-1");
+  });
+
+  it("does not ask after the code was inserted", async () => {
+    type("graph TD\nA-->B");
+    await vi.advanceTimersByTimeAsync(250);
+    await click(insertBtn());
+    await selectShape("id-1");
+    expect(loadConfirm().hidden).toBe(true);
+    expect(input().value).toBe("graph TD\nX-->Y");
+  });
+
+  it("asks before replacing generated code", async () => {
+    m.readSelection.mockResolvedValue({
+      values: [["A", "B"]], text: [["A", "B"]], numberFormat: [["General", "General"]], firstRow: 1,
+    });
+    await click(generateBtn());
+    await selectShape("id-1");
+    expect(loadConfirm().hidden).toBe(false);
+  });
+
+  it("cancels a pending render of typed code when loading", async () => {
+    type("typed");
+    await selectShape("id-1");
+    await click(replaceBtn());
+    m.renderMermaid.mockClear();
+    await vi.advanceTimersByTimeAsync(250);
+    expect(m.renderMermaid).not.toHaveBeenCalled();
+  });
+
+  it("hides the question when another sheet is activated", async () => {
+    type("edited");
+    await selectShape("id-1");
+    activateSheet();
+    expect(loadConfirm().hidden).toBe(true);
+  });
+
+  it("ignores shapes that are not in the list", async () => {
+    await selectShape("unknown");
+    expect(diagramSelect().value).toBe("");
+    expect(loadConfirm().hidden).toBe(true);
+  });
+
+  it("keeps working when watching the diagrams fails", async () => {
+    m.watchDiagramSelection.mockRejectedValue(new Error("no events"));
+    await start();
+    expect(optionLabels()).toHaveLength(3);
+    expect(errorText()).toBe("");
   });
 });
 

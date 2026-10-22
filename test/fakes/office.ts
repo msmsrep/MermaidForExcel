@@ -94,6 +94,8 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
     rowIndex: number;
   } | null | "shape" = null;
   const activatedHandlers: Array<() => unknown> = [];
+  /** Shape onActivated handlers by shape ID. */
+  const shapeHandlers = new Map<string, Set<(args: { shapeId: string }) => unknown>>();
   let syncCount = 0;
 
   /** How setSelectedDataAsync behaves: fail, or add this many shapes. */
@@ -163,6 +165,14 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
       get height() { return state.height; },
       set height(v: number) { state.height = v; },
       set lockAspectRatio(v: boolean) { state.lockAspectRatio = v; },
+      onActivated: {
+        add(h: (args: { shapeId: string }) => unknown) {
+          let set = shapeHandlers.get(state.id);
+          if (!set) shapeHandlers.set(state.id, (set = new Set()));
+          set.add(h);
+          return { context: ctx, remove: () => set.delete(h) };
+        },
+      },
       isNullObject: false,
       load: vi.fn(),
       delete() {
@@ -282,7 +292,9 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
   }
 
   const Excel = {
-    run: vi.fn(async (fn: (c: typeof ctx) => unknown) => fn(ctx)),
+    /** Accepts `run(fn)` and `run(context, fn)`. */
+    run: vi.fn(async (a: unknown, b?: (c: typeof ctx) => unknown) =>
+      (typeof a === "function" ? (a as (c: typeof ctx) => unknown) : b!)(ctx)),
   };
 
   const Office = {
@@ -327,6 +339,11 @@ export function createFakeOffice(init: Partial<ShapeState>[] = []) {
     activeCell,
     svgInsert,
     activatedHandlers,
+    shapeHandlers,
+    /** Selects a shape on the sheet, firing its onActivated handlers. */
+    async selectShape(id: string) {
+      for (const h of shapeHandlers.get(id) ?? []) await h({ shapeId: id });
+    },
     get syncCount() { return syncCount; },
     setSvgSupported(v: boolean) { svgSupported = v; },
     setSelection(s: typeof selection) { selection = s; },

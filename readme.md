@@ -14,7 +14,7 @@ This is an unofficial tool and is not affiliated with the Mermaid project. It wa
 
 - **Real-time preview** — The diagram is rendered automatically in the task pane as you type Mermaid syntax
 - **Insert into Excel** — Insert the previewed image at the active cell with one click
-- **Re-editing** — The Mermaid code is stored in the inserted image's alt text; pick it from [Sheet diagram] to edit and replace it
+- **Re-editing** — The Mermaid code is stored in the inserted image's alt text; select the diagram on the sheet (or pick it from [Sheet diagram]) to load it back, then edit and replace it. If the editor has unsaved code, you are asked before it is replaced
 - **Code from selected cells** — Select a table and click [Generate] to get flowchart (`parent | child | label`), Gantt (`task | start | end or days | section`) or pie chart (`label | value`) code
 - **PNG / JPEG / SVG output** — Choose your output format and download the image directly
 - **Editable shapes (experimental)** — Insert a flowchart as native Excel shapes and connectors (`Shapes (editable)`), or as an SVG simplified for Excel's *Convert to Shape* (`SVG (for shape conversion)`), so people without the add-in can edit it

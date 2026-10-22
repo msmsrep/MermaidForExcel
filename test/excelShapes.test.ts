@@ -6,6 +6,7 @@ import {
   isSvgInsertSupported,
   listDiagrams,
   onSheetActivated,
+  watchDiagramSelection,
 } from "../src/taskpane/excelShapes";
 import type { ShapeModel, ShapeNode } from "../src/taskpane/flowchartModel";
 import { createFakeOffice, type FakeOffice, type ShapeState } from "./fakes/office";
@@ -59,6 +60,61 @@ describe("onSheetActivated", () => {
 
     expect(fake.activatedHandlers).toHaveLength(1);
     await fake.activatedHandlers[0]();
+    expect(calls).toBe(1);
+  });
+});
+
+describe("watchDiagramSelection", () => {
+  it("calls the handler with the ID of a watched shape when it is selected", async () => {
+    setup({ name: "D1" }, { name: "D2" }, { name: "Other" });
+    const selected: string[] = [];
+    await watchDiagramSelection(["shape-1", "shape-2"], (id) => selected.push(id));
+
+    await fake.selectShape("shape-2");
+    await fake.selectShape("shape-3");
+    await fake.selectShape("shape-1");
+    expect(selected).toEqual(["shape-2", "shape-1"]);
+  });
+
+  it("removes the previous handlers before watching the new shapes", async () => {
+    setup({ name: "D1" }, { name: "D2" });
+    const selected: string[] = [];
+    await watchDiagramSelection(["shape-1"], (id) => selected.push(`old ${id}`));
+    await watchDiagramSelection(["shape-1", "shape-2"], (id) => selected.push(id));
+
+    await fake.selectShape("shape-1");
+    await fake.selectShape("shape-2");
+    expect(selected).toEqual(["shape-1", "shape-2"]);
+    expect(fake.shapeHandlers.get("shape-1")?.size).toBe(1);
+  });
+
+  it("leaves no duplicate handlers when calls overlap", async () => {
+    setup({ name: "D1" });
+    await Promise.all([
+      watchDiagramSelection(["shape-1"], () => {}),
+      watchDiagramSelection(["shape-1"], () => {}),
+      watchDiagramSelection(["shape-1"], () => {}),
+    ]);
+    expect(fake.shapeHandlers.get("shape-1")?.size).toBe(1);
+  });
+
+  it("removes all handlers when given no shapes", async () => {
+    setup({ name: "D1" });
+    let calls = 0;
+    await watchDiagramSelection(["shape-1"], () => calls++);
+    await watchDiagramSelection([], () => calls++);
+
+    await fake.selectShape("shape-1");
+    expect(calls).toBe(0);
+  });
+
+  it("keeps working after a failed call", async () => {
+    setup({ name: "D1" });
+    await expect(watchDiagramSelection(["missing"], () => {})).rejects.toThrow("ItemNotFound");
+
+    let calls = 0;
+    await watchDiagramSelection(["shape-1"], () => calls++);
+    await fake.selectShape("shape-1");
     expect(calls).toBe(1);
   });
 });

@@ -44,6 +44,47 @@ export async function onSheetActivated(handler: () => void): Promise<void> {
   });
 }
 
+let selectionHandlers: OfficeExtension.EventHandlerResult<Excel.ShapeActivatedEventArgs>[] = [];
+let selectionWatch: Promise<void> = Promise.resolve();
+
+/**
+ * Calls `handler` with the shape ID when one of the given shapes is selected
+ * on the sheet. Handlers from the previous call are removed first. Calls are
+ * queued so that overlapping refreshes do not leave duplicate handlers.
+ */
+export function watchDiagramSelection(
+  ids: string[],
+  handler: (id: string) => void,
+): Promise<void> {
+  const next = selectionWatch.then(async () => {
+    const old = selectionHandlers;
+    selectionHandlers = [];
+    if (old.length > 0) {
+      try {
+        await Excel.run(old[0].context, async (ctx) => {
+          for (const h of old) h.remove();
+          await ctx.sync();
+        });
+      } catch {
+        // Handlers of deleted shapes may fail to remove; they never fire again.
+      }
+    }
+    if (ids.length === 0) {
+      return;
+    }
+    await Excel.run(async (ctx) => {
+      const shapes = activeShapes(ctx);
+      const added = ids.map((id) =>
+        shapes.getItem(id).onActivated.add(async (args) => handler(args.shapeId)),
+      );
+      await ctx.sync();
+      selectionHandlers = added;
+    });
+  });
+  selectionWatch = next.catch(() => {/* keep the queue going */});
+  return next;
+}
+
 export function isSvgInsertSupported(): boolean {
   return !!Office.context.requirements?.isSetSupported("ImageCoercion", "1.2");
 }
