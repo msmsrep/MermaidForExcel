@@ -33,7 +33,7 @@ replaceInFile(
   `<Version>${version4}</Version>`,
 );
 replaceInFile(
-  "Installer/MermaidForExcel.iss",
+  "Installer/TextToSvgDiagramsForExcel.iss",
   /#define MyAppVersion "[^"]*"/,
   `#define MyAppVersion "${version4}"`,
 );

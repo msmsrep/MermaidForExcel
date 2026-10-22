@@ -1,4 +1,4 @@
-# Mermaid for Excel 今後の予定
+# Text-to-SVG Diagrams for Excel 今後の予定
 
 未実装の機能追加候補をまとめる。現行の仕様は [specification.md](./specification.md) を参照。
 

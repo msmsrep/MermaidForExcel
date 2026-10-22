@@ -7,13 +7,13 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const REPO = path.join(__dirname, "..");
 const DEV_URL = "https://localhost:3000";
-const PROD_URL = "https://msmsrep.github.io/MermaidForExcel/dist";
+const PROD_URL = "https://msmsrep.github.io/TextToSvgDiagramsForExcel/dist";
 
 const fixtures: string[] = [];
 
 /** Copies the given repo paths into a fresh temp directory, which the scripts treat as the project root. */
 function fixture(paths: string[]): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mermaid-for-excel-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "text-to-svg-diagrams-for-excel-"));
   fixtures.push(dir);
   for (const p of paths) {
     fs.cpSync(path.join(REPO, p), path.join(dir, p), { recursive: true });
@@ -42,20 +42,20 @@ afterEach(() => {
 
 describe("scripts/sync-version.js", () => {
   function versionFixture(version: string) {
-    const dir = fixture(["scripts/sync-version.js", "manifest.xml", "Installer/MermaidForExcel.iss"]);
+    const dir = fixture(["scripts/sync-version.js", "manifest.xml", "Installer/TextToSvgDiagramsForExcel.iss"]);
     fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ version }));
     return dir;
   }
 
   it("writes the package.json version as four parts to the manifest and installer", () => {
     const dir = versionFixture("2.3.4");
-    const before = { manifest: read(dir, "manifest.xml"), iss: read(dir, "Installer/MermaidForExcel.iss") };
+    const before = { manifest: read(dir, "manifest.xml"), iss: read(dir, "Installer/TextToSvgDiagramsForExcel.iss") };
 
     const result = run(dir, "scripts/sync-version.js");
     expect(result.status, result.stderr).toBe(0);
 
     const manifest = read(dir, "manifest.xml");
-    const iss = read(dir, "Installer/MermaidForExcel.iss");
+    const iss = read(dir, "Installer/TextToSvgDiagramsForExcel.iss");
     expect(manifest).toContain("<Version>2.3.4.0</Version>");
     expect(iss).toContain('#define MyAppVersion "2.3.4.0"');
     // Nothing else changes.
@@ -65,11 +65,11 @@ describe("scripts/sync-version.js", () => {
 
   it("fails when the version is not found in a target file", () => {
     const dir = versionFixture("2.3.4");
-    fs.writeFileSync(path.join(dir, "Installer/MermaidForExcel.iss"), "; no version here\n");
+    fs.writeFileSync(path.join(dir, "Installer/TextToSvgDiagramsForExcel.iss"), "; no version here\n");
 
     const result = run(dir, "scripts/sync-version.js");
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("Version pattern not found in Installer/MermaidForExcel.iss");
+    expect(result.stderr).toContain("Version pattern not found in Installer/TextToSvgDiagramsForExcel.iss");
   });
 });
 

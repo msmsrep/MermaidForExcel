@@ -1,4 +1,4 @@
-# Mermaid for Excel
+# Text-to-SVG Diagrams for Excel
 
 [English](./readme.md) | [日本語](./readme.ja.md)
 
@@ -8,7 +8,9 @@ Mermaid記法でダイアグラムを作成し、Excelのシートに画像と�
 テキストベースの記法でフローチャート・シーケンス図・ER図などを素早く描き、PNG/JPEG/SVG画像として現在のシートに貼り付けられます。
 ローカル完結処理のため、入力内容が外部に送信されることはありません。
 
-紹介ページと導入方法: https://msmsrep.github.io/MermaidForExcel/
+紹介ページと導入方法: https://msmsrep.github.io/TextToSvgDiagramsForExcel/
+
+Mermaid プロジェクトとは関係のない非公式のツールです。旧名は「Mermaid for Excel」です。旧名の版からの移行は [docs/migration.md](./docs/migration.md) を参照してください。
 
 ## 主な機能
 
@@ -23,7 +25,7 @@ Mermaid記法でダイアグラムを作成し、Excelのシートに画像と�
 ## 構成
 
 ```
-MermaidForExcel/
+TextToSvgDiagramsForExcel/
   build.js                 ← esbuild ビルドスクリプト（build / dev / watch / serve）
   manifest.xml             ← Office アドインマニフェスト
   package.json
@@ -31,6 +33,7 @@ MermaidForExcel/
   assets/                  ← アイコン置き場
   scripts/sync-version.js  ← package.json のバージョンをマニフェストとインストーラに反映
   site/index.html          ← GitHub Pages のトップに置く紹介ページ（導入方法を含む）
+  legacy-pages/            ← 旧 URL（…/MermaidForExcel/）に置く転送ページ（docs/migration.md 参照）
   src/taskpane/
     taskpane.html / .css
     taskpane.ts            ← UI の結線（エントリポイント）
@@ -48,7 +51,7 @@ MermaidForExcel/
 ## セットアップ
 
 ```bash
-cd MermaidForExcel
+cd TextToSvgDiagramsForExcel
 npm install
 
 # 開発用 HTTPS 証明書のインストール（初回のみ・管理者権限が必要）
@@ -106,7 +109,7 @@ npm run dev-server
 
 ### データの収集について
 
-Mermaid for Excelは、ユーザーの個人情報およびデータを**一切収集しません**。
+Text-to-SVG Diagrams for Excelは、ユーザーの個人情報およびデータを**一切収集しません**。
 
 ### 処理の仕組み
 
@@ -125,4 +128,4 @@ Mermaid for Excelは、ユーザーの個人情報およびデータを**一切�
 
 ## お問い合わせ
 
-プライバシー・その他ご質問は、[GitHub Issues](https://github.com/msmsrep/MermaidForExcel/issues) までお寄せください。
+プライバシー・その他ご質問は、[GitHub Issues](https://github.com/msmsrep/TextToSvgDiagramsForExcel/issues) までお寄せください。

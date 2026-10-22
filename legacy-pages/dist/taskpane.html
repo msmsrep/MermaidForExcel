@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- 旧名の manifest.xml が読み込むタスクペインを新しい URL へ転送する。
+     Office が付けるクエリ（_host_Info など）とハッシュはそのまま引き継ぐ -->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>Text-to-SVG Diagrams for Excel</title>
+    <script>
+      location.replace(
+        "https://msmsrep.github.io/TextToSvgDiagramsForExcel/dist/taskpane.html" + location.search + location.hash,
+      );
+    </script>
+  </head>
+  <body>
+    <p>
+      Mermaid for Excel は Text-to-SVG Diagrams for Excel に名前が変わりました。新しい manifest.xml を登録し直してください。<br />
+      Mermaid for Excel has been renamed to Text-to-SVG Diagrams for Excel. Please register the new manifest.xml.
+    </p>
+    <p><a href="https://msmsrep.github.io/TextToSvgDiagramsForExcel/#install">https://msmsrep.github.io/TextToSvgDiagramsForExcel/#install</a></p>
+  </body>
+</html>
