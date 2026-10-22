@@ -34,7 +34,7 @@ ImageCoercion 1.2 をマニフェストに宣言しないのは、非対応環�
 | 項目 | 内容 |
 |---|---|
 | リボン | [ホーム] タブにグループ「Text-to-SVG Diagrams」（ボタン「Open Text-to-SVG」）を追加 |
-| ボタン | 「Open Mermaid」（`OpenPaneButton`）。押下でタスクペイン `MermaidPane` を表示 |
+| ボタン | 「Open Text-to-SVG」（`OpenPaneButton`）。押下でタスクペイン `MermaidPane` を表示 |
 | タスクペイン URL | 開発: `https://localhost:3000/taskpane.html` / 本番: `https://msmsrep.github.io/TextToSvgDiagramsForExcel/dist/taskpane.html` |
 | アドイン ID | `4f7e8c1b-2a3d-4e5f-9071-a2b3c4d5e6f7` |
 

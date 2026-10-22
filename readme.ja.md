@@ -72,7 +72,7 @@ npm run dev-server
 2. **[挿入]** → **[アドイン]** → **[個人用アドイン]** → **[アドインをアップロード]**
 3. `dist/manifest.xml` を選択（開発サーバを使う場合は `npm run build:dev` 後のもの）
 
-ホームタブに **[Open Mermaid]** ボタンが追加されます。
+ホームタブに **[Open Text-to-SVG]** ボタンが追加されます。
 
 ## スクリプト
 
