@@ -70,7 +70,7 @@ To sideload and debug, run `npm start` while the development server is running.
 2. **[Insert]** → **[Add-ins]** → **[My Add-ins]** → **[Upload My Add-in]**
 3. Select `dist/manifest.xml` (built with `npm run build:dev` when using the development server)
 
-An **[Open Mermaid]** button will be added to the Home tab.
+An **[Open Text-to-SVG]** button will be added to the Home tab.
 
 ## Scripts
 
