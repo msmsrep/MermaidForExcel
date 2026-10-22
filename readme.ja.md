@@ -33,7 +33,6 @@ TextToSvgDiagramsForExcel/
   assets/                  ← アイコン置き場
   scripts/sync-version.js  ← package.json のバージョンをマニフェストとインストーラに反映
   site/index.html          ← GitHub Pages のトップに置く紹介ページ（導入方法を含む）
-  legacy-pages/            ← 旧 URL（…/MermaidForExcel/）に置く転送ページ（docs/migration.md 参照）
   src/taskpane/
     taskpane.html / .css
     taskpane.ts            ← UI の結線（エントリポイント）

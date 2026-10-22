@@ -31,7 +31,6 @@ TextToSvgDiagramsForExcel/
   assets/                  ← Icon directory
   scripts/sync-version.js  ← Syncs the package.json version to the manifest and installer
   site/index.html          ← Landing page served at the GitHub Pages root (includes install guide)
-  legacy-pages/            ← Redirect pages for the old URL (…/MermaidForExcel/); see docs/migration.md
   src/taskpane/
     taskpane.html / .css
     taskpane.ts            ← UI wiring (entry point)
