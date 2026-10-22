@@ -1,4 +1,4 @@
-# Mermaid for Excel
+# Text-to-SVG Diagrams for Excel
 
 [English](./readme.md) | [日本語](./readme.ja.md)
 
@@ -6,7 +6,9 @@ An Office Add-in that creates diagrams using Mermaid syntax and inserts them as 
 
 Quickly draw flowcharts, sequence diagrams, ER diagrams, and more using text-based notation, then insert them as PNG/JPEG/SVG images into the active sheet. All processing happens locally — your input is never sent to external servers.
 
-Landing page and install guide: https://msmsrep.github.io/MermaidForExcel/?lang=en
+Landing page and install guide: https://msmsrep.github.io/TextToSvgDiagramsForExcel/?lang=en
+
+This is an unofficial tool and is not affiliated with the Mermaid project. It was formerly named "Mermaid for Excel"; see [docs/migration.md](./docs/migration.md) for moving from the old name.
 
 ### Key Features
 
@@ -21,7 +23,7 @@ Landing page and install guide: https://msmsrep.github.io/MermaidForExcel/?lang=
 ## Project Structure
 
 ```
-MermaidForExcel/
+TextToSvgDiagramsForExcel/
   build.js                 ← esbuild build script (build / dev / watch / serve)
   manifest.xml             ← Office Add-in manifest
   package.json
@@ -46,7 +48,7 @@ MermaidForExcel/
 ## Setup
 
 ```bash
-cd MermaidForExcel
+cd TextToSvgDiagramsForExcel
 npm install
 
 # Install development HTTPS certificate (first time only, requires admin privileges)
@@ -103,7 +105,7 @@ Last updated: April 6, 2026
 
 ### Data Collection
 
-Mermaid for Excel does **not** collect any personal information or user data.
+Text-to-SVG Diagrams for Excel does **not** collect any personal information or user data.
 
 ### How It Works
 
@@ -122,4 +124,4 @@ This add-in does not use cookies, local storage, or any tracking technologies.
 
 ### Contact
 
-For privacy-related questions, please open a [GitHub Issue](https://github.com/msmsrep/MermaidForExcel/issues).
+For privacy-related questions, please open a [GitHub Issue](https://github.com/msmsrep/TextToSvgDiagramsForExcel/issues).

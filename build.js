@@ -10,7 +10,7 @@ const DIST = path.join(ROOT, "dist");
 const PORT = 3000;
 
 const DEV_BASE_URL = "https://localhost:3000";
-const PROD_BASE_URL = "https://msmsrep.github.io/MermaidForExcel/dist";
+const PROD_BASE_URL = "https://msmsrep.github.io/TextToSvgDiagramsForExcel/dist";
 
 // ── 静的ファイルのコピー ───────────────────────────────────────────────────────
 function copyStatics() {
@@ -95,7 +95,7 @@ async function serve() {
     certfile: certs.localhostCertificatePath,
     keyfile: certs.localhostKeyPath,
   });
-  console.log(`\n  Mermaid for Excel:`);
+  console.log(`\n  Text-to-SVG Diagrams for Excel:`);
   console.log(`  ${DEV_BASE_URL}/taskpane.html`);
   console.log(
     `\n  Excel の [挿入] → [アドイン] → [アドインをアップロード] で manifest.xml を選択\n`,

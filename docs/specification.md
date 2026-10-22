@@ -1,6 +1,6 @@
-# Mermaid for Excel 仕様書
+# Text-to-SVG Diagrams for Excel 仕様書
 
-本書は現行実装（`src/taskpane/*.ts`, `src/taskpane/taskpane.html`, `src/taskpane/taskpane.css`, `manifest.xml`, `build.js`, `Installer/MermaidForExcel.iss`）から起こした仕様書である。記述は実装の挙動を正とする。主要な挙動は `test/` の自動テストで検証している（§6.4）。
+本書は現行実装（`src/taskpane/*.ts`, `src/taskpane/taskpane.html`, `src/taskpane/taskpane.css`, `manifest.xml`, `build.js`, `Installer/TextToSvgDiagramsForExcel.iss`）から起こした仕様書である。記述は実装の挙動を正とする。主要な挙動は `test/` の自動テストで検証している（§6.4）。
 
 - 対象バージョン: 1.0.0（`package.json` / マニフェスト `1.0.0.0`）
 - 作成日: 2026-10-21
@@ -33,9 +33,9 @@ ImageCoercion 1.2 をマニフェストに宣言しないのは、非対応環�
 
 | 項目 | 内容 |
 |---|---|
-| リボン | [ホーム] タブにグループ「Mermaid For Excel」を追加 |
+| リボン | [ホーム] タブにグループ「Text-to-SVG Diagrams」（ボタン「Open Text-to-SVG」）を追加 |
 | ボタン | 「Open Mermaid」（`OpenPaneButton`）。押下でタスクペイン `MermaidPane` を表示 |
-| タスクペイン URL | 開発: `https://localhost:3000/taskpane.html` / 本番: `https://msmsrep.github.io/MermaidForExcel/dist/taskpane.html` |
+| タスクペイン URL | 開発: `https://localhost:3000/taskpane.html` / 本番: `https://msmsrep.github.io/TextToSvgDiagramsForExcel/dist/taskpane.html` |
 | アドイン ID | `4f7e8c1b-2a3d-4e5f-9071-a2b3c4d5e6f7` |
 
 ---
@@ -46,7 +46,7 @@ ImageCoercion 1.2 をマニフェストに宣言しないのは、非対応環�
 
 | # | 要素 | ID | 内容 |
 |---|---|---|---|
-| 1 | タイトル | — | 「Mermaid for Excel」 |
+| 1 | タイトル | — | 「Text-to-SVG Diagrams for Excel」 |
 | 2 | シート図形選択 | `sheet-diagram-select` | ラベル「Sheet diagram」。先頭は `(No diagram selected)`（値は空）。以降にアクティブシート上の Mermaid 図形を図形名で列挙 |
 | 3 | Mermaid 入力欄 | `mermaid-input` | 等幅フォントの textarea（初期高さ 100px、スペルチェック無効）。初期値はサンプルのフローチャート（§3.1） |
 | 4 | スプリッタ | `splitter` | 入力欄とプレビューの境界。ドラッグで入力欄の高さを変更（§4.7） |
@@ -296,7 +296,7 @@ Cookie、localStorage、外部送信は使用しない。
 
    | モード | ベース URL |
    |---|---|
-   | `build` | `https://msmsrep.github.io/MermaidForExcel/dist` |
+   | `build` | `https://msmsrep.github.io/TextToSvgDiagramsForExcel/dist` |
    | `dev` / `watch` / `serve` | `https://localhost:3000` |
 
 3. esbuild で `src/taskpane/taskpane.ts` を `dist/taskpane.js` にバンドルする（IIFE、ターゲット ES2017、ソースマップあり）。
@@ -305,9 +305,9 @@ Cookie、localStorage、外部送信は使用しない。
 
 ### 6.3 配布
 
-- 本番資産は GitHub Pages（`https://msmsrep.github.io/MermaidForExcel/dist/`）でホストする。
+- 本番資産は GitHub Pages（`https://msmsrep.github.io/TextToSvgDiagramsForExcel/dist/`）でホストする。
 - `main` への push 時に GitHub Actions（`.github/workflows/pages.yml`）が型チェック・テスト・本番ビルドを行い、`dist/` を `/dist/` 配下としてデプロイする。`dist/` はリポジトリにコミットしない。
-- サイトのルート（`https://msmsrep.github.io/MermaidForExcel/`）には `site/` の内容（紹介ページ `index.html`。機能・導入方法・使い方・プライバシーを日英併記）を配置する。
+- サイトのルート（`https://msmsrep.github.io/TextToSvgDiagramsForExcel/`）には `site/` の内容（紹介ページ `index.html`。機能・導入方法・使い方・プライバシーを日英併記）を配置する。
 
 ### 6.4 テスト
 
@@ -332,31 +332,36 @@ mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）�
 
 ## 7. インストーラ（Inno Setup）
 
-`Installer/MermaidForExcel.iss` により、共有フォルダカタログ方式でマニフェストを登録する。
+`Installer/TextToSvgDiagramsForExcel.iss` により、共有フォルダカタログ方式でマニフェストを登録する。
 
 | 項目 | 内容 |
 |---|---|
-| 出力 | `MermaidForExcelSetup.exe` |
+| アプリ名 | `Text-to-SVG Diagrams for Excel` |
+| 出力 | `TextToSvgDiagramsForExcelSetup.exe` |
 | 実行権限 | ログオン中のユーザー（`PrivilegesRequired=lowest`）。SMB 共有の作成・削除のみ UAC で昇格 |
 | 対応アーキテクチャ | x64 互換 |
 | 言語 | 日本語 |
-| 発行元 / URL | `msmsrep` / `https://github.com/msmsrep/MermaidForExcel` |
+| 発行元 / URL | `msmsrep` / `https://github.com/msmsrep/TextToSvgDiagramsForExcel` |
 | 配置ファイル | `dist/manifest.xml` のみ（コンパイル前に `npm run build` が必要） |
-| 配置先 | `%USERPROFILE%\Documents\OfficeAddIns\Excel\MermaidForExcel`（`{userdocs}` は OneDrive にリダイレクトされるため使わない） |
+| 配置先 | `%USERPROFILE%\Documents\OfficeAddIns\Excel\TextToSvgDiagramsForExcel`（`{userdocs}` は OneDrive にリダイレクトされるため使わない。前回の配置先は引き継がない: `UsePreviousAppDir=no`） |
 
 **インストール時**:
 
 1. マニフェストを配置先にコピーする。
-2. 共有名 `MermaidForExcel` が未作成なら、`net share MermaidForExcel="<配置先>"` を UAC 昇格して実行する。実行後に共有が存在しなければエラーダイアログを表示する。共有の有無は UNC パス `\\<コンピュータ名>\MermaidForExcel` を参照できるかで判定する（`net share <名前>` は非管理者ではアクセス拒否になるため使わない）。
+2. 共有名 `TextToSvgDiagramsForExcel` が未作成なら `net share TextToSvgDiagramsForExcel="<配置先>"` を、旧名の共有 `MermaidForExcel` があれば `net share MermaidForExcel /delete /y` を、1 回の UAC 昇格（`cmd /c`）でまとめて実行する。実行後に共有が存在しなければエラーダイアログを表示する。共有の有無は UNC パス `\\<コンピュータ名>\<共有名>` を参照できるかで判定する（`net share <名前>` は非管理者ではアクセス拒否になるため使わない）。
 3. `HKCU\Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}` に以下を登録する。
 
    | 値 | 型 | データ |
    |---|---|---|
    | `Id` | 文字列 | `{0e1e7db9-24b4-4064-8d0c-995f6f80a03f}` |
-   | `Url` | 文字列 | `\\<コンピュータ名>\MermaidForExcel` |
+   | `Url` | 文字列 | `\\<コンピュータ名>\TextToSvgDiagramsForExcel` |
    | `Flags` | DWORD | `1`（メニューに表示） |
 
-**アンインストール時**: 共有 `MermaidForExcel` が存在すれば UAC 昇格して削除し、上記レジストリキーを削除する。
+4. 旧名の配置先 `%USERPROFILE%\Documents\OfficeAddIns\Excel\MermaidForExcel` から、旧版が置いたファイル（`manifest.xml`、`unins000.exe`、`unins000.dat`）を削除し、空になったフォルダを削除する。
+
+**旧名（Mermaid for Excel）からの上書き**: `AppId` とカタログの GUID は旧版と同じ。上書きインストールで、アンインストール情報とカタログの `Url` が新しいものに置き換わる。
+
+**アンインストール時**: 共有 `TextToSvgDiagramsForExcel` が存在すれば UAC 昇格して削除し、上記レジストリキーを削除する。
 
 インストール後、利用者は Excel の [アドイン] → [共有フォルダー] からアドインを追加する。
 
@@ -365,7 +370,7 @@ mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）�
 ## 8. 既知の制約・課題
 
 1. **SVG 挿入の一時的な位置**: SVG は Excel の選択範囲に挿入された後で目的の位置へ移動する。
-2. **同名の既存共有**: 共有 `MermaidForExcel` が別のフォルダを指して既に存在する場合、インストーラは作り直さない。
+2. **同名の既存共有**: 共有 `TextToSvgDiagramsForExcel` が別のフォルダを指して既に存在する場合、インストーラは作り直さない。
 3. **SVG (for shape conversion)**: 「図形に変換」は利用者が Excel で行う。挿入後に画像の大きさを変えてから変換すると、文字の大きさが図形と合わなくなる。日本語など Trebuchet MS にない文字は、Excel では ＭＳ ゴシックになり、プレビューとフォントが変わる。変換後のエッジはフリーフォームの線で、ノードとは接続されない（ノードを動かしても線は付いてこない）。ラベルもノードとは別のテキストボックスになる。
 4. **Shapes (editable) の近似**:
    - フローチャートのみ対応。

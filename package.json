@@ -1,6 +1,6 @@
 {
-  "name": "mermaid-for-excel",
-  "version": "1.0.0",
+  "name": "text-to-svg-diagrams-for-excel",
+  "version": "1.1.0",
   "description": "Create diagrams using Mermaid syntax and insert them into Excel",
   "scripts": {
     "build": "node build.js",
@@ -10,7 +10,7 @@
     "typecheck": "tsc && tsc -p test",
     "test": "vitest run",
     "test:watch": "vitest",
-    "version": "node scripts/sync-version.js && git add manifest.xml Installer/MermaidForExcel.iss",
+    "version": "node scripts/sync-version.js && git add manifest.xml Installer/TextToSvgDiagramsForExcel.iss",
     "start": "office-addin-debugging start manifest.xml",
     "stop": "office-addin-debugging stop manifest.xml"
   },
