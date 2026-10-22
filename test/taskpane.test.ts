@@ -16,6 +16,7 @@ const m = vi.hoisted(() => ({
   svgToRaster: vi.fn(),
   toOfficeSvg: vi.fn(),
   extractFlowchart: vi.fn(),
+  readSelection: vi.fn(),
 }));
 
 vi.mock("../src/taskpane/excelShapes", () => ({
@@ -26,6 +27,7 @@ vi.mock("../src/taskpane/excelShapes", () => ({
   insertSvgShape: m.insertSvgShape,
   insertNativeShapes: m.insertNativeShapes,
 }));
+vi.mock("../src/taskpane/excelTable", () => ({ readSelection: m.readSelection }));
 vi.mock("../src/taskpane/render", () => ({
   initMermaid: m.initMermaid,
   renderMermaid: m.renderMermaid,
@@ -63,6 +65,8 @@ const insertBtn = () => $<HTMLButtonElement>("insert-btn");
 const downloadBtn = () => $<HTMLButtonElement>("download-btn");
 const diagramSelect = () => $<HTMLSelectElement>("sheet-diagram-select");
 const formatSelect = () => $<HTMLSelectElement>("format-select");
+const tableKindSelect = () => $<HTMLSelectElement>("table-kind-select");
+const generateBtn = () => $<HTMLButtonElement>("generate-btn");
 const optionLabels = () => Array.from(diagramSelect().options, (o) => [o.value, o.textContent]);
 
 /** Lets pending promise chains (mocked async calls) settle. */
@@ -378,6 +382,61 @@ describe("sheet diagram dropdown", () => {
     handler();
     expect(optionLabels()).toEqual([["", "(No diagram selected)"]]);
     expect(diagramSelect().value).toBe("");
+  });
+});
+
+describe("code from selected cells", () => {
+  const TABLE = { values: [["A", "B"]], text: [["A", "B"]], numberFormat: [["General", "General"]], firstRow: 1 };
+  const CODE = 'graph TD\n    n1["A"] --> n2["B"]';
+
+  beforeEach(async () => {
+    m.listDiagrams.mockResolvedValue(DIAGRAMS);
+    m.readSelection.mockResolvedValue(TABLE);
+    await start();
+  });
+
+  it("puts the generated code in the input and renders it immediately", async () => {
+    m.renderMermaid.mockClear();
+    await click(generateBtn());
+
+    expect(input().value).toBe(CODE);
+    expect(m.renderMermaid).toHaveBeenCalledOnce();
+    expect(m.renderMermaid).toHaveBeenCalledWith(CODE);
+    expect(insertBtn().disabled).toBe(false);
+  });
+
+  it("generates the chosen diagram type", async () => {
+    m.readSelection.mockResolvedValue({ ...TABLE, values: [["Item", "Value"], ["A", 3]] });
+    tableKindSelect().value = "pie";
+    await click(generateBtn());
+    expect(input().value).toBe('pie\n    "A" : 3');
+  });
+
+  it("clears the sheet diagram selection so the code is inserted as a new diagram", async () => {
+    selectDiagram("id-1");
+    await flush();
+    await click(generateBtn());
+
+    expect(diagramSelect().value).toBe("");
+    await click(insertBtn());
+    expect(m.insertImageShape).toHaveBeenCalledWith(RASTER, CODE, undefined);
+  });
+
+  it("cancels a pending render of typed code", async () => {
+    type("typed");
+    await click(generateBtn());
+    m.renderMermaid.mockClear();
+    await vi.advanceTimersByTimeAsync(250);
+    expect(m.renderMermaid).not.toHaveBeenCalled();
+  });
+
+  it("reports read failures and leaves the input alone", async () => {
+    m.readSelection.mockRejectedValue(new Error("Select a cell range on the sheet."));
+    type("mine");
+    await click(generateBtn());
+
+    expect(errorText()).toBe("Generate error: Select a cell range on the sheet.");
+    expect(input().value).toBe("mine");
   });
 });
 

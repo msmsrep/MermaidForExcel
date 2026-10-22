@@ -15,6 +15,7 @@ This is an unofficial tool and is not affiliated with the Mermaid project. It wa
 - **Real-time preview** — The diagram is rendered automatically in the task pane as you type Mermaid syntax
 - **Insert into Excel** — Insert the previewed image at the active cell with one click
 - **Re-editing** — The Mermaid code is stored in the inserted image's alt text; pick it from [Sheet diagram] to edit and replace it
+- **Code from selected cells** — Select a table and click [Generate] to get flowchart (`parent | child | label`), Gantt (`task | start | end or days | section`) or pie chart (`label | value`) code
 - **PNG / JPEG / SVG output** — Choose your output format and download the image directly
 - **Editable shapes (experimental)** — Insert a flowchart as native Excel shapes and connectors (`Shapes (editable)`), or as an SVG simplified for Excel's *Convert to Shape* (`SVG (for shape conversion)`), so people without the add-in can edit it
 - **Wide diagram support** — All diagram types supported by [Mermaid](https://github.com/mermaid-js/mermaid) are available, including flowcharts, sequence diagrams, class diagrams, ER diagrams, and Gantt charts
@@ -40,7 +41,10 @@ TextToSvgDiagramsForExcel/
     flowchartModel.ts      ← Flowchart SVG → Excel shape model
     svgUtil.ts             ← Matrix and color helpers
     excelShapes.ts         ← Excel shape insert / replace / list
+    excelTable.ts          ← Reads the selected cells
+    tableToMermaid.ts      ← Table → Mermaid code
     splitter.ts            ← Editor / preview splitter
+  samples/                 ← Sample workbook for manual testing
   test/                    ← Vitest tests (Office.js, mermaid and Canvas are mocked)
   dist/                    ← Build output (not committed; deployed by GitHub Actions)
 ```
@@ -101,7 +105,7 @@ This software uses [mermaid](https://github.com/mermaid-js/mermaid) (MIT License
 
 ## Privacy Policy
 
-Last updated: April 6, 2026
+Last updated: October 22, 2026
 
 ### Data Collection
 
@@ -112,6 +116,7 @@ Text-to-SVG Diagrams for Excel does **not** collect any personal information or 
 - Mermaid syntax text entered by the user is processed **entirely within the task pane** in Excel
 - Diagram rendering is completed locally and no data is sent to external servers
 - Inserting images into Excel sheets is also performed locally via the Microsoft Office JavaScript API
+- When generating code from a table, the selected cell values are read only to build the code inside the task pane; they are not stored or sent anywhere
 
 ### Access to External Services
 

@@ -7,11 +7,13 @@ import {
   listDiagrams,
   onSheetActivated,
 } from "./excelShapes";
+import { readSelection } from "./excelTable";
 import { extractFlowchart } from "./flowchartModel";
 import { type ImageFormat, serializeSvg, svgSize, svgToDataUrl, svgToRaster } from "./image";
 import { toOfficeSvg } from "./officeSvg";
 import { getFlowchartData, initMermaid, renderMermaid } from "./render";
 import { initSplitter } from "./splitter";
+import { type TableKind, tableToMermaid } from "./tableToMermaid";
 import { byId, errorMessage } from "./util";
 
 const RENDER_DEBOUNCE_MS = 250;
@@ -39,6 +41,8 @@ Office.onReady(() => {
   const downloadBtn = byId<HTMLButtonElement>("download-btn");
   const diagramSelect = byId<HTMLSelectElement>("sheet-diagram-select");
   const formatSelect = byId<HTMLSelectElement>("format-select");
+  const tableKindSelect = byId<HTMLSelectElement>("table-kind-select");
+  const generateBtn = byId<HTMLButtonElement>("generate-btn");
 
   let renderDebounceTimer: number | undefined;
   let renderRequestId = 0;
@@ -137,6 +141,23 @@ Office.onReady(() => {
   });
 
   initSplitter(splitter, input, preview);
+
+  // ── Code from selected cells ───────────────────────────────────────────────
+  generateBtn.addEventListener("click", async () => {
+    errDiv.textContent = "";
+    let code: string;
+    try {
+      code = tableToMermaid(await readSelection(), tableKindSelect.value as TableKind);
+    } catch (e) {
+      errDiv.textContent = `Generate error: ${errorMessage(e)}`;
+      return;
+    }
+    input.value = code;
+    // The generated code is a new diagram, so don't replace the selected one.
+    diagramSelect.value = "";
+    window.clearTimeout(renderDebounceTimer);
+    await renderPreview();
+  });
 
   // ── Insert / Download ──────────────────────────────────────────────────────
   /** Runs a button's action on the rendered SVG and reports any failure. */

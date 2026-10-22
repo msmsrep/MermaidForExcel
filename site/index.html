@@ -668,6 +668,13 @@
               </p>
             </div>
             <div class="card">
+              <h3><span class="ja">表から図を生成</span><span class="en">Diagrams from tables</span></h3>
+              <p>
+                <span class="ja">選択したセルの表から、フローチャート・ガントチャート・円グラフのコードを作ります。</span>
+                <span class="en">Turn the selected cells into flowchart, Gantt or pie chart code.</span>
+              </p>
+            </div>
+            <div class="card">
               <h3><span class="ja">PNG / JPEG / SVG</span><span class="en">PNG / JPEG / SVG</span></h3>
               <p>
                 <span class="ja">形式を選んで挿入、またはファイルとしてダウンロードできます。</span>
@@ -936,6 +943,10 @@
               <span class="en">Type Mermaid code in the editor; the preview appears below it.</span>
             </li>
             <li>
+              <span class="ja">表から作るときは、セル範囲を選択して種類を選び <span class="path">[Generate]</span>。コードが入力欄に入ります。</span>
+              <span class="en">To start from a table, select the cells, pick a diagram type and click <span class="path">Generate</span>; the code goes into the editor.</span>
+            </li>
+            <li>
               <span class="ja">形式（PNG / JPEG / SVG）を選んで <span class="path">[Insert to Excel]</span>。ファイルとして保存するときは <span class="path">[Download]</span>。</span>
               <span class="en">Pick a format (PNG / JPEG / SVG) and click <span class="path">Insert to Excel</span>, or <span class="path">Download</span> to save it as a file.</span>
             </li>
@@ -981,6 +992,10 @@
             <p><span class="ja">一覧には、アクティブなシート上でこのアドインが挿入した図だけが出ます。図のあるシートを開いてから、リストをもう一度開いてください。代替テキストのタイトル（Mermaid Diagram）を書き換えた図は対象外になります。</span><span class="en">The list shows only diagrams this add-in inserted on the active sheet. Switch to that sheet and open the list again. Diagrams whose alt text title (Mermaid Diagram) was changed are not listed.</span></p>
           </details>
           <details>
+            <summary><span class="ja">表からコードを作るには、どんな表にすればよいですか？</span><span class="en">How should my table look to generate code?</span></summary>
+            <p><span class="ja">フローチャートは「親 | 子 | ラベル」、ガントチャートは「タスク | 開始日 | 終了日または日数 | セクション」、円グラフは「項目 | 値」の順に列を並べます。Auto では 2 列目が日付ならガントチャート、数値なら円グラフになります。ガントチャートと円グラフでは 1 行目の見出しは自動で読み飛ばしますが、フローチャートでは見出しもノードになるので、データ行だけを選択してください。</span><span class="en">Use the columns parent | child | label for a flowchart, task | start | end or days | section for a Gantt chart, and label | value for a pie chart. Auto picks Gantt when the second column holds dates and pie when it holds numbers. A header row is skipped for Gantt and pie charts, but a flowchart turns it into nodes, so select the data rows only.</span></p>
+          </details>
+          <details>
             <summary><span class="ja">旧名「Mermaid for Excel」から移行するには？</span><span class="en">How do I move from "Mermaid for Excel"?</span></summary>
             <p><span class="ja"><a href="https://github.com/msmsrep/TextToSvgDiagramsForExcel/blob/main/docs/migration.md">移行手順</a>を参照してください。</span><span class="en">See the <a href="https://github.com/msmsrep/TextToSvgDiagramsForExcel/blob/main/docs/migration.md">migration guide</a>.</span></p>
           </details>
@@ -1002,6 +1017,10 @@
             <li>
               <span class="ja">シートへの画像挿入は Office JavaScript API を通じてローカルで行います。</span>
               <span class="en">Images are inserted locally through the Office JavaScript API.</span>
+            </li>
+            <li>
+              <span class="ja">表からコードを作るときに読み込むセルの値は、タスクペイン内でコードの生成にだけ使います。</span>
+              <span class="en">Cell values read to generate code from a table are used only to build the code inside the task pane.</span>
             </li>
             <li>
               <span class="ja">通信はアドイン本体（HTML / JavaScript）をこのサイトから読み込むときだけで、ユーザーのデータは含みません。</span>

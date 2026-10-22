@@ -9,6 +9,8 @@
   --color-insert-hover: #0b5e0b;
   --color-download: #5c2d91;
   --color-download-hover: #451f6e;
+  --color-generate: #0078d4;
+  --color-generate-hover: #106ebe;
 }
 
 *,
@@ -166,6 +168,27 @@ button {
 }
 #download-btn {
   flex: 1 0 auto;
+}
+
+/* Diagram type select and generate button, joined like the insert group. */
+.table-group {
+  display: flex;
+  flex-shrink: 0;
+  min-width: 0;
+}
+#table-kind-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 6px;
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  background: #fff;
+  text-overflow: ellipsis;
+}
+#generate-btn {
+  --btn-bg: var(--color-generate);
+  --btn-hover: var(--color-generate-hover);
+  border-radius: 0 4px 4px 0;
 }
 
 #error {
