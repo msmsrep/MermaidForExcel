@@ -15,6 +15,13 @@
     <select id="sheet-diagram-select" aria-label="Select Mermaid diagram in active sheet">
       <option value="">(No diagram selected)</option>
     </select>
+    <div id="load-confirm" role="alert" hidden>
+      <span id="load-confirm-text"></span>
+      <div class="confirm-buttons">
+        <button id="load-confirm-replace" class="action-btn">Replace</button>
+        <button id="load-confirm-keep" class="secondary-btn">Keep</button>
+      </div>
+    </div>
 
     <label class="field-label" for="table-kind-select">Code from selected cells</label>
     <div class="table-group">
