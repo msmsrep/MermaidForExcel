@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  getDiagramWidth,
   insertImageShape,
   insertNativeShapes,
   insertSvgShape,
@@ -130,6 +131,18 @@ describe("isSvgInsertSupported", () => {
   it("is false when ImageCoercion 1.2 is not supported", () => {
     fake.setSvgSupported(false);
     expect(isSvgInsertSupported()).toBe(false);
+  });
+});
+
+describe("getDiagramWidth", () => {
+  it("returns the diagram's width in points", async () => {
+    setup({ altTextTitle: TITLE, width: 321 });
+    expect(await getDiagramWidth("shape-1")).toBe(321);
+  });
+
+  it("fails when the diagram no longer exists", async () => {
+    setup();
+    await expect(getDiagramWidth("missing")).rejects.toThrow("Selected diagram no longer exists.");
   });
 });
 

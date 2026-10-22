@@ -1,5 +1,6 @@
 import {
   type DiagramItem,
+  getDiagramWidth,
   insertImageShape,
   insertNativeShapes,
   insertSvgShape,
@@ -10,14 +11,14 @@ import {
 } from "./excelShapes";
 import { errorSourceLine } from "./errorLine";
 import { readSelection } from "./excelTable";
-import { extractFlowchart } from "./flowchartModel";
+import { extractFlowchart, scaleModel } from "./flowchartModel";
 import { type ImageFormat, serializeSvg, svgSize, svgToDataUrl, svgToRaster } from "./image";
 import { initLineHighlight } from "./lineHighlight";
 import { toOfficeSvg } from "./officeSvg";
 import { getFlowchartData, initMermaid, renderMermaid } from "./render";
 import { initSplitter } from "./splitter";
 import { type TableKind, tableToMermaid } from "./tableToMermaid";
-import { byId, errorMessage } from "./util";
+import { byId, errorMessage, PX_TO_PT } from "./util";
 
 const RENDER_DEBOUNCE_MS = 250;
 const PREVIEW_HINT_HTML = '<span class="hint">Type Mermaid code</span>';
@@ -45,6 +46,9 @@ Office.onReady(() => {
   const downloadBtn = byId<HTMLButtonElement>("download-btn");
   const diagramSelect = byId<HTMLSelectElement>("sheet-diagram-select");
   const formatSelect = byId<HTMLSelectElement>("format-select");
+  const sizeSelect = byId<HTMLSelectElement>("size-select");
+  const sizeWidth = byId<HTMLInputElement>("size-width");
+  const keepSize = byId<HTMLInputElement>("keep-size");
   const tableKindSelect = byId<HTMLSelectElement>("table-kind-select");
   const generateBtn = byId<HTMLButtonElement>("generate-btn");
   const loadConfirm = byId<HTMLDivElement>("load-confirm");
@@ -71,12 +75,73 @@ Office.onReady(() => {
     downloadBtn.disabled = !enabled || selectedFormat() === "shapes";
   }
 
-  formatSelect.addEventListener("change", () => setActionsEnabled(actionsEnabled));
+  formatSelect.addEventListener("change", () => {
+    setActionsEnabled(actionsEnabled);
+    updateSizeControls();
+  });
+
+  // ── Output size ────────────────────────────────────────────────────────────
+  // "SVG (for shape conversion)" stays at the actual size: Convert to Shape
+  // scales the shapes with the picture but keeps the font sizes.
+  const isFixedSize = () => selectedFormat() === "svg-office";
+
+  function updateSizeControls() {
+    const fixed = isFixedSize();
+    sizeSelect.disabled = fixed;
+    sizeWidth.hidden = sizeSelect.value !== "width";
+    sizeWidth.disabled = fixed;
+    keepSize.disabled = fixed || currentDiagramId === "";
+  }
+
+  /** The diagram's actual width in points, from the preview SVG's viewBox. */
+  function actualWidthPt(svgEl: SVGSVGElement): number {
+    const { width } = svgSize(svgEl);
+    if (width === 0) {
+      throw new Error("The diagram's size is unknown.");
+    }
+    return width * PX_TO_PT;
+  }
+
+  /** The scale chosen in Size, relative to the diagram's actual size. */
+  function chosenScale(svgEl: SVGSVGElement): number {
+    if (isFixedSize()) {
+      return 1;
+    }
+    if (sizeSelect.value !== "width") {
+      return Number(sizeSelect.value);
+    }
+    const width = Number(sizeWidth.value);
+    if (!(width > 0)) {
+      throw new Error("Enter a width greater than 0.");
+    }
+    return width / actualWidthPt(svgEl);
+  }
+
+  /** The scale for inserting; Keep current size matches the replaced diagram's width. */
+  async function insertScale(svgEl: SVGSVGElement, replaceId?: string): Promise<number> {
+    if (replaceId && !keepSize.disabled && keepSize.checked) {
+      return (await getDiagramWidth(replaceId)) / actualWidthPt(svgEl);
+    }
+    return chosenScale(svgEl);
+  }
+
+  sizeSelect.addEventListener("change", () => {
+    // Start the width at the diagram's actual width.
+    const svgEl = preview.querySelector<SVGSVGElement>("svg");
+    if (sizeSelect.value === "width" && sizeWidth.value === "" && svgEl) {
+      const width = svgSize(svgEl).width;
+      if (width > 0) {
+        sizeWidth.value = String(Math.round(width * PX_TO_PT));
+      }
+    }
+    updateSizeControls();
+  });
 
   // ── Sheet diagram dropdown ─────────────────────────────────────────────────
   function setCurrentDiagram(id: string) {
     currentDiagramId = diagramItems.some((item) => item.id === id) ? id : "";
     diagramSelect.value = currentDiagramId;
+    updateSizeControls();
   }
 
   function updateDiagramOptions(items: DiagramItem[], selectedId = "") {
@@ -167,7 +232,7 @@ Office.onReady(() => {
     if (!selected) {
       // "(No diagram selected)": insert as a new diagram, keeping the code.
       hideLoadConfirm();
-      currentDiagramId = "";
+      setCurrentDiagram("");
       return;
     }
     // Stay on the current diagram until the load actually happens.
@@ -284,13 +349,14 @@ Office.onReady(() => {
     if (format === "shapes") {
       throw new Error("Shapes cannot be downloaded.");
     }
+    const scale = chosenScale(svgEl);
     let dataUrl: string;
     if (format === "svg") {
-      dataUrl = svgToDataUrl(serializeSvg(svgEl));
+      dataUrl = svgToDataUrl(serializeSvg(svgEl, scale));
     } else if (format === "svg-office") {
       dataUrl = svgToDataUrl(toOfficeSvg(svgEl));
     } else {
-      dataUrl = `data:image/${format};base64,` + (await svgToRaster(svgEl, format)).base64;
+      dataUrl = `data:image/${format};base64,` + (await svgToRaster(svgEl, format, scale)).base64;
     }
 
     const a = document.createElement("a");
@@ -310,8 +376,9 @@ Office.onReady(() => {
       if (!data) {
         throw new Error("Shapes format supports flowcharts only.");
       }
+      const scale = await insertScale(svgEl, replaceId);
       insertedShapeId = await insertNativeShapes(
-        extractFlowchart(svgEl, data),
+        scaleModel(extractFlowchart(svgEl, data), scale),
         mermaidCode,
         replaceId,
       );
@@ -321,10 +388,16 @@ Office.onReady(() => {
           "SVG insertion is not supported in this version of Excel. Use PNG or JPEG.",
         );
       }
+      const scale = await insertScale(svgEl, replaceId);
       const svg = format === "svg" ? serializeSvg(svgEl) : toOfficeSvg(svgEl);
-      insertedShapeId = await insertSvgShape({ svg, ...svgSize(svgEl) }, mermaidCode, replaceId);
+      const { width, height } = svgSize(svgEl);
+      insertedShapeId = await insertSvgShape(
+        { svg, width: width * scale, height: height * scale },
+        mermaidCode,
+        replaceId,
+      );
     } else {
-      const image = await svgToRaster(svgEl, format);
+      const image = await svgToRaster(svgEl, format, await insertScale(svgEl, replaceId));
       insertedShapeId = await insertImageShape(image, mermaidCode, replaceId);
     }
 
@@ -333,6 +406,7 @@ Office.onReady(() => {
   });
 
   // Render initial Mermaid code when the task pane opens.
+  updateSizeControls();
   void renderPreview();
   void refreshDiagramOptions();
 });

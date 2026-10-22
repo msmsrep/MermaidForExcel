@@ -134,6 +134,47 @@ textarea {
   outline: none;
 }
 
+/* ── Output size ── */
+.size-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  flex-shrink: 0;
+}
+#size-select,
+#size-width {
+  padding: 4px 6px;
+  background: #fff;
+}
+#size-width {
+  width: 6em;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 12px;
+}
+#size-width[hidden] {
+  display: none;
+}
+#size-width:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+#size-select:disabled,
+#size-width:disabled {
+  color: var(--color-disabled);
+}
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.check-label:has(input:disabled) {
+  color: var(--color-disabled);
+}
+
 /* ── Buttons ── */
 /* In a narrow pane, Download wraps below rather than squeezing the select. */
 .buttons {

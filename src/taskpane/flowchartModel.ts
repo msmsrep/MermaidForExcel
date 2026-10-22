@@ -339,6 +339,26 @@ function num(value: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/**
+ * Scales a shape model: positions, sizes, font sizes and line weights.
+ * Excel still rounds line weights to whole points when inserting.
+ */
+export function scaleModel(model: ShapeModel, scale: number): ShapeModel {
+  if (scale === 1) {
+    return model;
+  }
+  const s = (v: number) => round(v * scale);
+  const box = (b: Box): Box => ({ left: s(b.left), top: s(b.top), width: s(b.width), height: s(b.height) });
+  const point = (p: Point): Point => ({ x: s(p.x), y: s(p.y) });
+  const label = (l: Label): Label => ({ ...l, size: s(l.size) });
+  const line = <T extends Line>(l: T): T => (l ? { ...l, weight: s(l.weight) } : l);
+  return {
+    nodes: model.nodes.map((n) => ({ ...n, box: box(n.box), label: label(n.label), line: line(n.line) })),
+    edges: model.edges.map((e) => ({ ...e, begin: point(e.begin), end: point(e.end), line: line(e.line) })),
+    labels: model.labels.map((t) => ({ ...t, box: box(t.box), label: label(t.label) })),
+  };
+}
+
 function round(v: number): number {
   return Math.round(v * 100) / 100;
 }

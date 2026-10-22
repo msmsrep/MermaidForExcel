@@ -17,6 +17,7 @@ This is an unofficial tool and is not affiliated with the Mermaid project. It wa
 - **Re-editing** — The Mermaid code is stored in the inserted image's alt text; select the diagram on the sheet (or pick it from [Sheet diagram]) to load it back, then edit and replace it. If the editor has unsaved code, you are asked before it is replaced
 - **Code from selected cells** — Select a table and click [Generate] to get flowchart (`parent | child | label`), Gantt (`task | start | end or days | section`) or pie chart (`label | value`) code
 - **PNG / JPEG / SVG output** — Choose your output format and download the image directly
+- **Output size** — Set the size as a scale (50–200%) or a width in points. When replacing a diagram, *Keep current size* (on by default) keeps its width on the sheet
 - **Editable shapes (experimental)** — Insert a flowchart as native Excel shapes and connectors (`Shapes (editable)`), or as an SVG simplified for Excel's *Convert to Shape* (`SVG (for shape conversion)`), so people without the add-in can edit it
 - **Wide diagram support** — All diagram types supported by [Mermaid](https://github.com/mermaid-js/mermaid) are available, including flowcharts, sequence diagrams, class diagrams, ER diagrams, and Gantt charts
 - **Privacy-friendly** — All processing is completed within the task pane; no data is sent to external servers

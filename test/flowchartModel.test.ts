@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { connectionSite, extractFlowchart } from "../src/taskpane/flowchartModel";
+import { connectionSite, extractFlowchart, type ShapeModel, scaleModel } from "../src/taskpane/flowchartModel";
 import type { FlowchartData } from "../src/taskpane/render";
 import { stubSvgGeometry } from "./fakes/svgGeometry";
 
@@ -266,5 +266,50 @@ describe("connectionSite", () => {
     const square = { left: 0, top: 0, width: 20, height: 20 };
     expect(connectionSite(square, { x: 0, y: 0 }, 8)).toBe(1);
     expect(connectionSite(square, { x: 20, y: 0 }, 8)).toBe(7);
+  });
+});
+
+describe("scaleModel", () => {
+  const model: ShapeModel = {
+    nodes: [{
+      id: "A", type: "Rectangle", box: { left: 1, top: 2, width: 30, height: 10 },
+      fill: { color: "#ECECFF", transparency: 0 },
+      line: { color: "#9370DB", weight: 0.75, dashStyle: "Solid" },
+      label: { text: "A", size: 12, color: "#333333" }, labelPosition: "Middle",
+    }, {
+      id: "B", type: "Rectangle", box: { left: 0, top: 0, width: 3, height: 3 },
+      fill: null, line: null, label: { text: "", size: 12, color: "#333333" }, labelPosition: "Top",
+    }],
+    edges: [{
+      from: "A", to: "B", begin: { x: 10, y: 20 }, end: { x: 1, y: 1 },
+      beginArrow: "None", endArrow: "Triangle",
+      line: { color: "#333333", weight: 1.5, dashStyle: "Dash" }, connectorType: "Elbow",
+    }],
+    labels: [{ box: { left: 4, top: 5, width: 6, height: 7 }, fill: null, label: { text: "yes", size: 9, color: "#000" } }],
+  };
+
+  it("scales positions, sizes, font sizes and line weights", () => {
+    const scaled = scaleModel(model, 1.5);
+
+    expect(scaled.nodes[0]).toMatchObject({
+      box: { left: 1.5, top: 3, width: 45, height: 15 },
+      line: { weight: 1.13 },
+      label: { size: 18 },
+      fill: { color: "#ECECFF" },
+    });
+    expect(scaled.nodes[1].line).toBeNull();
+    expect(scaled.edges[0]).toMatchObject({
+      begin: { x: 15, y: 30 }, end: { x: 1.5, y: 1.5 }, line: { weight: 2.25, dashStyle: "Dash" },
+    });
+    expect(scaled.labels[0]).toMatchObject({ box: { left: 6, top: 7.5, width: 9, height: 10.5 }, label: { size: 13.5 } });
+  });
+
+  it("does not change the original model", () => {
+    scaleModel(model, 2);
+    expect(model.nodes[0].box.width).toBe(30);
+  });
+
+  it("returns the model as is at scale 1", () => {
+    expect(scaleModel(model, 1)).toBe(model);
   });
 });

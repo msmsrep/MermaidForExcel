@@ -16,6 +16,7 @@ Mermaid 記法のテキストからダイアグラムを生成し、Excel のア
 - 挿入した図形の代替テキストに Mermaid コードを保持し、後から読み出して再編集・差し替えできる。シート上で図形を選択するか、シート図形一覧から選ぶとコードを読み込む（§4.3）。
 - 選択したセル範囲の表から Mermaid コード（フローチャート / ガントチャート / 円グラフ）を生成できる（§4.10）。
 - 描画エラーの行を入力欄で強調し、その行へ移動できる（§4.11）。
+- 出力の大きさを倍率または幅で指定でき、差し替え時は元の図の幅を保てる（§4.12）。
 
 ### 1.1 動作環境
 
@@ -56,13 +57,16 @@ ImageCoercion 1.2 をマニフェストに宣言しないのは、非対応環�
 | 4 | 生成ボタン | `generate-btn` | 「Generate」。選択セルから Mermaid コードを生成する（§4.10） |
 | 5 | Mermaid 入力欄 | `mermaid-input` | 等幅フォントの textarea（初期高さ 100px、スペルチェック無効）。初期値はサンプルのフローチャート（§3.1）。背面の `input-backdrop` でエラー行を強調する（§4.11） |
 | 6 | スプリッタ | `splitter` | 入力欄とプレビューの境界。ドラッグで入力欄の高さを変更（§4.7） |
+| 6a | サイズ選択 | `size-select` | ラベル「Size」。`50%` / `75%` / `100%`（既定）/ `150%` / `200%` / `Width (pt)`（値 `width`）（§4.12） |
+| 6b | 幅の入力 | `size-width` | 幅（pt）の数値欄。`Width (pt)` のときだけ表示 |
+| 6c | サイズ維持 | `keep-size` | チェックボックス「Keep current size」（既定でオン）。図を差し替えるときだけ有効 |
 | 7 | 形式選択 | `format-select` | `PNG`（既定）/ `JPEG` / `SVG` / `SVG (for shape conversion)`（値 `svg-office`）/ `Shapes (editable)`（値 `shapes`） |
 | 8 | 挿入ボタン | `insert-btn` | 「Insert to Excel」。初期状態は無効 |
 | 9 | ダウンロードボタン | `download-btn` | 「Download」。初期状態は無効。形式が `Shapes (editable)` の間も無効 |
 | 10 | エラー表示 | `error` | エラーメッセージを赤字で表示。描画エラーの行が分かるときは「Go to line N」リンクを付ける（§4.11） |
 | 11 | プレビュー | `preview` | レンダリング結果の SVG を表示（最小高さ 120px、はみ出しはスクロール）。入力が空のときは「Type Mermaid code」を表示 |
 
-形式選択は挿入とダウンロードの両方に適用される。形式を変更したときもボタンの有効・無効を更新する。
+形式選択とサイズ選択は挿入とダウンロードの両方に適用される。形式を変更したときもボタンとサイズ指定の有効・無効を更新する。
 
 `SVG (for shape conversion)` と `Shapes (editable)` は、アドインを持たない人が編集できる図形にするための方式で、比較のために両方を提供している（§4.8、§4.9）。
 
@@ -145,20 +149,22 @@ graph LR
 
 **形式別の処理**:
 
-- **PNG / JPEG**: §4.6 で画像化し、`shapes.addImage` で追加する。表示サイズは SVG の実寸（px × 0.75pt）に設定する。追加・プロパティ設定・元図形の削除は 1 回の `sync` で行う。
+各形式の大きさには §4.12 の倍率 k を掛ける。
+
+- **PNG / JPEG**: §4.6 で画像化し、`shapes.addImage` で追加する。表示サイズは SVG の実寸（px × 0.75pt）× k に設定する。追加・プロパティ設定・元図形の削除は 1 回の `sync` で行う。
 - **SVG**:
   1. `ImageCoercion 1.2` 非対応の場合は `SVG insertion is not supported in this version of Excel. Use PNG or JPEG.` エラーとする。
   2. 挿入前にシート上の図形 ID 一覧と配置先を取得する。
   3. `setSelectedDataAsync`（`CoercionType.XmlSvg`）で挿入する。
   4. 挿入前後の図形 ID の差分から新しい図形を特定する。ちょうど 1 個でなければ `Could not identify the inserted shape.` エラーとする。
-  5. 新しい図形に位置・名前・代替テキストを設定する。プレビュー SVG の viewBox があれば、縦横比の固定を外して表示サイズを SVG の実寸（px × 0.75pt）にする（Excel は SVG を独自の大きさで挿入するが、「図形に変換」は図形を画像の大きさに合わせて拡大縮小する一方で文字の大きさは変えないため、実寸でないと文字がはみ出す）。
+  5. 新しい図形に位置・名前・代替テキストを設定する。プレビュー SVG の viewBox があれば、縦横比の固定を外して表示サイズを SVG の実寸（px × 0.75pt）× k にする（Excel は SVG を独自の大きさで挿入するが、「図形に変換」は図形を画像の大きさに合わせて拡大縮小する一方で文字の大きさは変えないため、実寸でないと文字がはみ出す）。
   6. 差し替えの場合、元図形がまだ存在すれば削除する。
 
   挿入が失敗した場合、元図形は削除されずに残る。
 - **SVG (for shape conversion)**: §4.8 で変換した SVG を、SVG と同じ手順で挿入する。
 - **Shapes (editable)**:
   1. Mermaid コードを `mermaid.mermaidAPI.getDiagramFromText` で解析し、フローチャート（`flowchart` / `flowchart-v2` / `flowchart-elk`）でなければ `Shapes format supports flowcharts only.` エラーとする。
-  2. §4.9 でプレビューの SVG から図形モデルを作り、Excel の図形として挿入する。
+  2. §4.9 でプレビューの SVG から図形モデルを作り、k 倍して（§4.12）Excel の図形として挿入する。
 
 **共通の付与情報**:
 
@@ -175,9 +181,9 @@ graph LR
 
 | 形式 | ファイル名 | 生成方法 |
 |---|---|---|
-| PNG | `diagram.png` | §4.6 |
-| JPEG | `diagram.jpg` | §4.6 |
-| SVG | `diagram.svg` | プレビュー SVG を `XMLSerializer` で文字列化 |
+| PNG | `diagram.png` | §4.6（倍率 k） |
+| JPEG | `diagram.jpg` | §4.6（倍率 k） |
+| SVG | `diagram.svg` | プレビュー SVG を `XMLSerializer` で文字列化。k が 1 以外なら、複製に `width` / `height`（viewBox の大きさ × k）を設定し、mermaid が付けた `max-width` を外す |
 | SVG (for shape conversion) | `diagram.svg` | §4.8 |
 | Shapes (editable) | — | ダウンロード不可（ボタン無効） |
 
@@ -189,15 +195,15 @@ graph LR
 2. 基準サイズ（CSS px）を決定する。
    - 幅: `viewBox.width`（> 0 の場合）→ 画像の `naturalWidth` → `800`
    - 高さ: `viewBox.height`（> 0 の場合）→ `naturalHeight` → `600`
-3. 倍率を決定する。既定は **2 倍**。ただし Canvas の面積が 4096 × 4096 px を超える場合は、超えない倍率まで下げる。
-4. Canvas（基準サイズ × 倍率）に描画し、Base64 を得る。
+3. 画素の倍率を決定する。既定は **2 × k**（k は §4.12 の倍率）。ただし Canvas の面積が 4096 × 4096 px を超える場合は、超えない倍率まで下げる。
+4. Canvas（基準サイズ × 画素の倍率）に描画し、Base64 を得る。表示サイズは基準サイズ × k とする。
 
 | 形式 | 背景 | 品質 |
 |---|---|---|
 | PNG | 透過 | — |
 | JPEG | 白 (`#ffffff`) で塗りつぶし | 0.92 |
 
-Excel 挿入時は §4.4 のとおり基準サイズで表示するため、見た目の大きさは倍率によらず一定で、解像度だけが上がる。
+Excel 挿入時は §4.4 のとおり表示サイズ（基準サイズ × k）で表示するため、k を変えても表示サイズあたりの解像度は 2 倍のまま変わらない（上限にかかる大きな図を除く）。
 
 ### 4.7 スプリッタ
 
@@ -325,6 +331,23 @@ mermaid が報告する行は、mermaid が前処理した後のコードの行�
 
 **「Go to line N」リンク**: クリックすると入力欄にフォーカスし、その行を選択し、行が入力欄の高さの上から 1/3 に来るようにスクロールする。入力中に選択位置を勝手に動かさないよう、自動では移動しない。
 
+### 4.12 出力サイズ
+
+挿入・ダウンロードのときに、図の実寸（プレビュー SVG の viewBox の大きさ。px × 0.75 で pt）に掛ける倍率 k を決める。設定は保存せず、タスクペインを開くたびに既定値に戻る。
+
+| 条件 | k |
+|---|---|
+| 形式が `SVG (for shape conversion)` | 1（サイズ選択・幅・サイズ維持は無効）。「図形に変換」は文字の大きさを変えないため、拡大縮小すると文字が図形に合わなくなる |
+| 挿入で、図を差し替え、「Keep current size」がオン | 差し替える図形の現在の幅（pt）÷ 実寸の幅。高さは縦横比で決まる。サイズ選択は使わない |
+| サイズ選択が倍率 | その倍率 |
+| サイズ選択が `Width (pt)` | 入力した幅 ÷ 実寸の幅。0 以下や数値でなければ `Enter a width greater than 0.` エラー |
+
+- ダウンロードには「Keep current size」を使わず、常にサイズ選択の倍率を使う。
+- 実寸の幅が必要な場合（幅の指定・サイズ維持）に viewBox がなければ `The diagram's size is unknown.` エラーとする。
+- `Width (pt)` に切り替えたとき、幅が空ならプレビューの実寸の幅（pt、整数に丸める）を入れる。
+- 「Keep current size」は、シート図形選択で図を選んでいる（差し替えになる）ときだけ有効にする。差し替える図形の幅は挿入の直前に読み込む。既に存在しなければ `Selected diagram no longer exists.` エラー。
+- **Shapes (editable)**: 図形モデル（§4.9）の位置・大きさ・接続点・フォントサイズ・線の太さを k 倍する（小数第 2 位に丸める）。線の太さは挿入時に §4.9 のとおり整数に丸める。
+
 ---
 
 ## 5. データ仕様
@@ -392,14 +415,14 @@ Vitest（jsdom 環境）で `test/*.test.ts` を実行する。設定は `vitest
 | `excelTable.test.ts` | §4.10 の選択範囲の読み込み | 同上 |
 | `tableToMermaid.test.ts` | §4.10 のコード生成 | そのまま実行 |
 | `officeSvg.test.ts` | §4.8 | SVG の座標・計測 API をスタブ（`test/fakes/svgGeometry.ts`） |
-| `flowchartModel.test.ts` | §4.9 の図形モデル作成 | 同上 |
+| `flowchartModel.test.ts` | §4.9 の図形モデル作成、§4.12 の拡大縮小 | 同上 |
 | `svgUtil.test.ts` | 行列・色の変換 | そのまま実行 |
 | `image.test.ts` | §4.6 | `Image` と Canvas をモック |
 | `render.test.ts` | §4.1 / §4.2 / §4.4 の mermaid 呼び出し | `mermaid` をモック |
 | `splitter.test.ts` | §4.7 | 要素の `offsetHeight` をスタブ |
 | `errorLine.test.ts` | §4.11 の行の特定 | そのまま実行 |
 | `lineHighlight.test.ts` | §4.11 の強調表示 | 要素の `clientWidth` / `clientHeight` / `offsetTop` をスタブ |
-| `taskpane.test.ts` | §3〜§4.5 / §4.10 / §4.11 の UI 動作 | `taskpane.html` を読み込み、Excel 操作・描画・画像化をモック |
+| `taskpane.test.ts` | §3〜§4.5 / §4.10〜§4.12 の UI 動作 | `taskpane.html` を読み込み、Excel 操作・描画・画像化をモック |
 | `scripts.test.ts` | §6.1 のバージョン反映、§6.2 | 一時ディレクトリにコピーしたプロジェクトで実行（Node 環境） |
 
 mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）、`watch` / `serve` モード、Excel 上での動作は自動テストの対象外。jsdom は `<svg>` 内の `<style>` を適用しないため、§4.8 / §4.9 のテストではスタイルを `<svg>` の外に置く。
