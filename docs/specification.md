@@ -2,9 +2,9 @@
 
 本書は現行実装（`src/taskpane/*.ts`, `src/taskpane/taskpane.html`, `src/taskpane/taskpane.css`, `manifest.xml`, `build.js`, `Installer/TextToSvgDiagramsForExcel.iss`）から起こした仕様書である。記述は実装の挙動を正とする。主要な挙動は `test/` の自動テストで検証している（§6.4）。
 
-- 対象バージョン: 1.2.0（`package.json` / マニフェスト `1.2.0.0`）
+- 対象バージョン: 1.3.0（`package.json` / マニフェスト `1.3.0.0`）
 - 作成日: 2026-10-21
-- 更新日: 2026-10-22
+- 更新日: 2026-10-23
 
 ---
 
@@ -15,6 +15,8 @@ Mermaid 記法のテキストからダイアグラムを生成し、Excel のア
 - レンダリングはタスクペイン内（ブラウザ）で完結し、入力内容を外部へ送信しない。
 - 挿入した図形の代替テキストに Mermaid コードを保持し、後から読み出して再編集・差し替えできる。シート上で図形を選択するか、シート図形一覧から選ぶとコードを読み込む（§4.3）。
 - 選択したセル範囲の表から Mermaid コード（フローチャート / ガントチャート / 円グラフ）を生成できる（§4.10）。
+- 描画エラーの行を入力欄で強調し、その行へ移動できる（§4.11）。
+- 出力の大きさを倍率または幅で指定でき、差し替え時は元の図の幅を保てる（§4.12）。
 
 ### 1.1 動作環境
 
@@ -53,15 +55,18 @@ ImageCoercion 1.2 をマニフェストに宣言しないのは、非対応環�
 | 2a | 読み込み確認 | `load-confirm` | 未保存のコードを置き換える前に表示する確認バー（§4.3）。通常は非表示。メッセージ（`load-confirm-text`）と「Replace」（`load-confirm-replace`）「Keep」（`load-confirm-keep`）ボタン |
 | 3 | 生成する図の種類 | `table-kind-select` | ラベル「Code from selected cells」。`Auto`（既定）/ `Flowchart` / `Gantt` / `Pie`。各選択肢に列の並びを併記 |
 | 4 | 生成ボタン | `generate-btn` | 「Generate」。選択セルから Mermaid コードを生成する（§4.10） |
-| 5 | Mermaid 入力欄 | `mermaid-input` | 等幅フォントの textarea（初期高さ 100px、スペルチェック無効）。初期値はサンプルのフローチャート（§3.1） |
+| 5 | Mermaid 入力欄 | `mermaid-input` | 等幅フォントの textarea（初期高さ 100px、スペルチェック無効）。初期値はサンプルのフローチャート（§3.1）。背面の `input-backdrop` でエラー行を強調する（§4.11） |
 | 6 | スプリッタ | `splitter` | 入力欄とプレビューの境界。ドラッグで入力欄の高さを変更（§4.7） |
+| 6a | サイズ選択 | `size-select` | ラベル「Size」。`50%` / `75%` / `100%`（既定）/ `150%` / `200%` / `Width (pt)`（値 `width`）（§4.12） |
+| 6b | 幅の入力 | `size-width` | 幅（pt）の数値欄。`Width (pt)` のときだけ表示 |
+| 6c | サイズ維持 | `keep-size` | チェックボックス「Keep current size」（既定でオン）。図を差し替えるときだけ有効 |
 | 7 | 形式選択 | `format-select` | `PNG`（既定）/ `JPEG` / `SVG` / `SVG (for shape conversion)`（値 `svg-office`）/ `Shapes (editable)`（値 `shapes`） |
 | 8 | 挿入ボタン | `insert-btn` | 「Insert to Excel」。初期状態は無効 |
 | 9 | ダウンロードボタン | `download-btn` | 「Download」。初期状態は無効。形式が `Shapes (editable)` の間も無効 |
-| 10 | エラー表示 | `error` | エラーメッセージを赤字で表示 |
+| 10 | エラー表示 | `error` | エラーメッセージを赤字で表示。描画エラーの行が分かるときは「Go to line N」リンクを付ける（§4.11） |
 | 11 | プレビュー | `preview` | レンダリング結果の SVG を表示（最小高さ 120px、はみ出しはスクロール）。入力が空のときは「Type Mermaid code」を表示 |
 
-形式選択は挿入とダウンロードの両方に適用される。形式を変更したときもボタンの有効・無効を更新する。
+形式選択とサイズ選択は挿入とダウンロードの両方に適用される。形式を変更したときもボタンとサイズ指定の有効・無効を更新する。
 
 `SVG (for shape conversion)` と `Shapes (editable)` は、アドインを持たない人が編集できる図形にするための方式で、比較のために両方を提供している（§4.8、§4.9）。
 
@@ -102,10 +107,10 @@ graph LR
 - **トリガー**: 入力欄の `input` イベント。最後の入力から **250ms** のデバウンス後に描画する。シート図形を読み込んだときは即時描画する（保留中のデバウンスは取り消す）。
 - **処理**:
   1. エラー表示をクリアし、挿入・ダウンロードボタンを無効化する。
-  2. 入力をトリムし、空ならヒント表示に戻して終了する。
+  2. 入力をトリムし、空ならエラー行の強調を消し、ヒント表示に戻して終了する。
   3. 既存の `#mermaid-graph` 要素を削除してから `mermaid.render("mermaid-graph", code)` を実行する。
-  4. 成功時はプレビューに SVG を表示し、両ボタンを有効化する（形式が `Shapes (editable)` のときダウンロードボタンは無効のまま）。
-  5. 失敗時はプレビューを空にし、`Render error: <メッセージ>` を表示する。
+  4. 成功時はエラー行の強調を消し、プレビューに SVG を表示し、両ボタンを有効化する（形式が `Shapes (editable)` のときダウンロードボタンは無効のまま）。
+  5. 失敗時はプレビューを空にし、`Render error: <メッセージ>` を表示する。メッセージから行が分かれば、その行を強調してリンクを付ける（§4.11）。
 - **入力中**: `input` イベントの時点で挿入・ダウンロードボタンを無効化し、実行中の描画があれば破棄する（リクエスト ID を進める）。プレビューが入力内容と一致しない間に、古い図と新しいコードの組み合わせで挿入されるのを防ぐため。
 - **競合制御**: 描画ごとにリクエスト ID を採番し、完了時に最新 ID でなければ結果を破棄する（古い描画結果で上書きしない）。
 
@@ -144,20 +149,22 @@ graph LR
 
 **形式別の処理**:
 
-- **PNG / JPEG**: §4.6 で画像化し、`shapes.addImage` で追加する。表示サイズは SVG の実寸（px × 0.75pt）に設定する。追加・プロパティ設定・元図形の削除は 1 回の `sync` で行う。
+各形式の大きさには §4.12 の倍率 k を掛ける。
+
+- **PNG / JPEG**: §4.6 で画像化し、`shapes.addImage` で追加する。表示サイズは SVG の実寸（px × 0.75pt）× k に設定する。追加・プロパティ設定・元図形の削除は 1 回の `sync` で行う。
 - **SVG**:
   1. `ImageCoercion 1.2` 非対応の場合は `SVG insertion is not supported in this version of Excel. Use PNG or JPEG.` エラーとする。
   2. 挿入前にシート上の図形 ID 一覧と配置先を取得する。
   3. `setSelectedDataAsync`（`CoercionType.XmlSvg`）で挿入する。
   4. 挿入前後の図形 ID の差分から新しい図形を特定する。ちょうど 1 個でなければ `Could not identify the inserted shape.` エラーとする。
-  5. 新しい図形に位置・名前・代替テキストを設定する。プレビュー SVG の viewBox があれば、縦横比の固定を外して表示サイズを SVG の実寸（px × 0.75pt）にする（Excel は SVG を独自の大きさで挿入するが、「図形に変換」は図形を画像の大きさに合わせて拡大縮小する一方で文字の大きさは変えないため、実寸でないと文字がはみ出す）。
+  5. 新しい図形に位置・名前・代替テキストを設定する。プレビュー SVG の viewBox があれば、縦横比の固定を外して表示サイズを SVG の実寸（px × 0.75pt）× k にする（Excel は SVG を独自の大きさで挿入するが、「図形に変換」は図形を画像の大きさに合わせて拡大縮小する一方で文字の大きさは変えないため、実寸でないと文字がはみ出す）。
   6. 差し替えの場合、元図形がまだ存在すれば削除する。
 
   挿入が失敗した場合、元図形は削除されずに残る。
 - **SVG (for shape conversion)**: §4.8 で変換した SVG を、SVG と同じ手順で挿入する。
 - **Shapes (editable)**:
   1. Mermaid コードを `mermaid.mermaidAPI.getDiagramFromText` で解析し、フローチャート（`flowchart` / `flowchart-v2` / `flowchart-elk`）でなければ `Shapes format supports flowcharts only.` エラーとする。
-  2. §4.9 でプレビューの SVG から図形モデルを作り、Excel の図形として挿入する。
+  2. §4.9 でプレビューの SVG から図形モデルを作り、k 倍して（§4.12）Excel の図形として挿入する。
 
 **共通の付与情報**:
 
@@ -174,9 +181,9 @@ graph LR
 
 | 形式 | ファイル名 | 生成方法 |
 |---|---|---|
-| PNG | `diagram.png` | §4.6 |
-| JPEG | `diagram.jpg` | §4.6 |
-| SVG | `diagram.svg` | プレビュー SVG を `XMLSerializer` で文字列化 |
+| PNG | `diagram.png` | §4.6（倍率 k） |
+| JPEG | `diagram.jpg` | §4.6（倍率 k） |
+| SVG | `diagram.svg` | プレビュー SVG を `XMLSerializer` で文字列化。k が 1 以外なら、複製に `width` / `height`（viewBox の大きさ × k）を設定し、mermaid が付けた `max-width` を外す |
 | SVG (for shape conversion) | `diagram.svg` | §4.8 |
 | Shapes (editable) | — | ダウンロード不可（ボタン無効） |
 
@@ -188,15 +195,15 @@ graph LR
 2. 基準サイズ（CSS px）を決定する。
    - 幅: `viewBox.width`（> 0 の場合）→ 画像の `naturalWidth` → `800`
    - 高さ: `viewBox.height`（> 0 の場合）→ `naturalHeight` → `600`
-3. 倍率を決定する。既定は **2 倍**。ただし Canvas の面積が 4096 × 4096 px を超える場合は、超えない倍率まで下げる。
-4. Canvas（基準サイズ × 倍率）に描画し、Base64 を得る。
+3. 画素の倍率を決定する。既定は **2 × k**（k は §4.12 の倍率）。ただし Canvas の面積が 4096 × 4096 px を超える場合は、超えない倍率まで下げる。
+4. Canvas（基準サイズ × 画素の倍率）に描画し、Base64 を得る。表示サイズは基準サイズ × k とする。
 
 | 形式 | 背景 | 品質 |
 |---|---|---|
 | PNG | 透過 | — |
 | JPEG | 白 (`#ffffff`) で塗りつぶし | 0.92 |
 
-Excel 挿入時は §4.4 のとおり基準サイズで表示するため、見た目の大きさは倍率によらず一定で、解像度だけが上がる。
+Excel 挿入時は §4.4 のとおり表示サイズ（基準サイズ × k）で表示するため、k を変えても表示サイズあたりの解像度は 2 倍のまま変わらない（上限にかかる大きな図を除く）。
 
 ### 4.7 スプリッタ
 
@@ -298,6 +305,49 @@ Excel の「図形に変換」で文字・矢印・色がずれないよう、�
 | Gantt | タスク \| 開始日 \| 終了日または日数 \| (セクション) | `gantt` / `dateFormat YYYY-MM-DD` / `inclusiveEndDates`（終了日を含む）。4 列目の値が変わるたびに `section` 行を入れる。タスク名の `:` は全角の `：`、改行は空白に置き換える。タスク名が空、開始日が日付でない、終了日が日付でも正の数値でもない行は `Row <行番号>: ...` エラーとする（行番号はシートの行番号） |
 | Pie | ラベル \| 値 | `pie` と `"ラベル" : 値`。値には表示文字列ではなく数値そのものを使う。ラベルの `"` は `'` に、改行は空白に置き換える。値が数値でない行は `Row <行番号>: the value must be a number.` エラーとする |
 
+### 4.11 エラー行の強調（`errorLine.ts` / `lineHighlight.ts`）
+
+**行の特定**（`errorSourceLine`）: 描画エラーのメッセージから行番号（1 始まり）を取り出し、入力欄の行に対応させる。
+
+| 形式 | 例 | 対象 |
+|---|---|---|
+| jison | `Parse error on line N:` / `Lexical error on line N.` | フローチャート、シーケンス図など多くの図 |
+| Langium | `Parse error on line N, column M:` / `Lexer error on line N, column M:` | pie など |
+
+mermaid が報告する行は、mermaid が前処理した後のコードの行なので、入力欄の行とずれる。そこで、入力欄の各文字の行を記録したまま、描画前と同じ順に以下を取り除き、報告された行の先頭の文字が元々あった行を求める。
+
+1. 前後の空白（描画前のトリム）
+2. front matter（`---` で囲んだ先頭のブロック）
+3. ディレクティブ（`%%{ ... }%%`。複数行も含む）
+4. `%%` で始まるコメント行。続けて先頭の空白を取り除く
+
+除去の正規表現は mermaid 11 の `preprocessDiagram` と同じものを使う。行番号がコードの末尾を越える場合（入力の終わりで起きるエラー）は最後の行とする。メッセージに行番号がなければ強調しない。
+
+**強調表示**（`initLineHighlight`）: textarea は行ごとに装飾できないため、textarea を透明にし、背面の `input-backdrop` に同じ文字を 1 行 1 ブロックで透明色で置き、該当行のブロックに背景色を付ける。
+
+- 折り返しが一致するよう、フォント・余白・行の高さ・`white-space: pre-wrap` / `overflow-wrap: break-word` をそろえ、幅は textarea の `clientWidth`（スクロールバーを除く）に合わせる。
+- textarea のスクロール（`scroll`）とウィンドウの大きさの変更（`resize`）に追従する。
+- 強調中に入力欄を編集しても、次の描画まで同じ行番号を強調し続ける（入力のたびに消えてちらつくのを防ぐ）。
+
+**「Go to line N」リンク**: クリックすると入力欄にフォーカスし、その行を選択し、行が入力欄の高さの上から 1/3 に来るようにスクロールする。入力中に選択位置を勝手に動かさないよう、自動では移動しない。
+
+### 4.12 出力サイズ
+
+挿入・ダウンロードのときに、図の実寸（プレビュー SVG の viewBox の大きさ。px × 0.75 で pt）に掛ける倍率 k を決める。設定は保存せず、タスクペインを開くたびに既定値に戻る。
+
+| 条件 | k |
+|---|---|
+| 形式が `SVG (for shape conversion)` | 1（サイズ選択・幅・サイズ維持は無効）。「図形に変換」は文字の大きさを変えないため、拡大縮小すると文字が図形に合わなくなる |
+| 挿入で、図を差し替え、「Keep current size」がオン | 差し替える図形の現在の幅（pt）÷ 実寸の幅。高さは縦横比で決まる。サイズ選択は使わない |
+| サイズ選択が倍率 | その倍率 |
+| サイズ選択が `Width (pt)` | 入力した幅 ÷ 実寸の幅。0 以下や数値でなければ `Enter a width greater than 0.` エラー |
+
+- ダウンロードには「Keep current size」を使わず、常にサイズ選択の倍率を使う。
+- 実寸の幅が必要な場合（幅の指定・サイズ維持）に viewBox がなければ `The diagram's size is unknown.` エラーとする。
+- `Width (pt)` に切り替えたとき、幅が空ならプレビューの実寸の幅（pt、整数に丸める）を入れる。
+- 「Keep current size」は、シート図形選択で図を選んでいる（差し替えになる）ときだけ有効にする。差し替える図形の幅は挿入の直前に読み込む。既に存在しなければ `Selected diagram no longer exists.` エラー。
+- **Shapes (editable)**: 図形モデル（§4.9）の位置・大きさ・接続点・フォントサイズ・線の太さを k 倍する（小数第 2 位に丸める）。線の太さは挿入時に §4.9 のとおり整数に丸める。
+
 ---
 
 ## 5. データ仕様
@@ -365,12 +415,14 @@ Vitest（jsdom 環境）で `test/*.test.ts` を実行する。設定は `vitest
 | `excelTable.test.ts` | §4.10 の選択範囲の読み込み | 同上 |
 | `tableToMermaid.test.ts` | §4.10 のコード生成 | そのまま実行 |
 | `officeSvg.test.ts` | §4.8 | SVG の座標・計測 API をスタブ（`test/fakes/svgGeometry.ts`） |
-| `flowchartModel.test.ts` | §4.9 の図形モデル作成 | 同上 |
+| `flowchartModel.test.ts` | §4.9 の図形モデル作成、§4.12 の拡大縮小 | 同上 |
 | `svgUtil.test.ts` | 行列・色の変換 | そのまま実行 |
 | `image.test.ts` | §4.6 | `Image` と Canvas をモック |
 | `render.test.ts` | §4.1 / §4.2 / §4.4 の mermaid 呼び出し | `mermaid` をモック |
 | `splitter.test.ts` | §4.7 | 要素の `offsetHeight` をスタブ |
-| `taskpane.test.ts` | §3〜§4.5 / §4.10 の UI 動作 | `taskpane.html` を読み込み、Excel 操作・描画・画像化をモック |
+| `errorLine.test.ts` | §4.11 の行の特定 | そのまま実行 |
+| `lineHighlight.test.ts` | §4.11 の強調表示 | 要素の `clientWidth` / `clientHeight` / `offsetTop` をスタブ |
+| `taskpane.test.ts` | §3〜§4.5 / §4.10〜§4.12 の UI 動作 | `taskpane.html` を読み込み、Excel 操作・描画・画像化をモック |
 | `scripts.test.ts` | §6.1 のバージョン反映、§6.2 | 一時ディレクトリにコピーしたプロジェクトで実行（Node 環境） |
 
 mermaid の実際の描画（jsdom は SVG のレイアウトを持たない）、`watch` / `serve` モード、Excel 上での動作は自動テストの対象外。jsdom は `<svg>` 内の `<style>` を適用しないため、§4.8 / §4.9 のテストではスタイルを `<svg>` の外に置く。

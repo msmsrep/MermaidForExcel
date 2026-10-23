@@ -34,19 +34,22 @@
       <button id="generate-btn" class="action-btn">Generate</button>
     </div>
 
-    <textarea
-      id="mermaid-input"
-      aria-label="Mermaid code"
-      spellcheck="false"
-      placeholder="graph TD&#10;A-->B"
-    >
+    <div id="editor">
+      <div id="input-backdrop" aria-hidden="true"></div>
+      <textarea
+        id="mermaid-input"
+        aria-label="Mermaid code"
+        spellcheck="false"
+        placeholder="graph TD&#10;A-->B"
+      >
 graph LR
     A[Start] --> B{Condition}
     B -->|Yes| C[Process A]
     B -->|No| D[Process B]
     C --> E[End]
     D --> E</textarea
-    >
+      >
+    </div>
     <div
       id="splitter"
       role="separator"
@@ -54,6 +57,23 @@ graph LR
       aria-label="Resize editor"
       tabindex="0"
     ></div>
+
+    <div class="size-group">
+      <label class="field-label" for="size-select">Size</label>
+      <select id="size-select" aria-label="Output size">
+        <option value="0.5">50%</option>
+        <option value="0.75">75%</option>
+        <option value="1" selected>100%</option>
+        <option value="1.5">150%</option>
+        <option value="2">200%</option>
+        <option value="width">Width (pt)</option>
+      </select>
+      <input id="size-width" type="number" min="1" step="1" aria-label="Width in points" hidden />
+      <label class="check-label">
+        <input id="keep-size" type="checkbox" checked disabled />
+        Keep current size
+      </label>
+    </div>
 
     <div class="buttons">
       <div class="insert-group">

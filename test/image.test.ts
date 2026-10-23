@@ -57,6 +57,31 @@ describe("serializeSvg / svgToDataUrl", () => {
     expect(str).toContain("A &amp; B");
   });
 
+  it("gives a scaled copy an explicit size and drops mermaid's max-width", () => {
+    const svg = makeSvg("0 0 10 20");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("style", "max-width: 10px;");
+    const str = serializeSvg(svg, 1.5);
+
+    expect(str).toContain('width="15"');
+    expect(str).toContain('height="30"');
+    expect(str).not.toContain("max-width");
+    expect(str).not.toContain("style=");
+    expect(svg.getAttribute("width")).toBe("100%");
+  });
+
+  it("keeps other styles of a scaled copy", () => {
+    const svg = makeSvg("0 0 10 20");
+    svg.setAttribute("style", "max-width: 10px; background-color: white;");
+    expect(serializeSvg(svg, 2)).toContain('style="background-color: white;"');
+  });
+
+  it("leaves the SVG as is at scale 1 or without a viewBox", () => {
+    const svg = makeSvg("0 0 10 20");
+    expect(serializeSvg(svg, 1)).toBe(serializeSvg(svg));
+    expect(serializeSvg(makeSvg(), 2)).not.toContain("width=");
+  });
+
   it("builds a percent-encoded SVG data URL", () => {
     const url = svgToDataUrl('<svg a="#">&</svg>');
     expect(url).toBe(
@@ -79,6 +104,20 @@ describe("svgToRaster", () => {
     expect(result).toEqual({ base64: "ENCODED", width: 100, height: 50 });
     expect(canvas).toEqual({ width: 200, height: 100 });
     expect(ctx2d.drawImage).toHaveBeenCalledWith(expect.any(FakeImage), 0, 0, 200, 100);
+  });
+
+  it("scales the reported size and the resolution together", async () => {
+    const result = await svgToRaster(makeSvg("0 0 100 50"), "png", 1.5);
+
+    expect(result).toEqual({ base64: "ENCODED", width: 150, height: 75 });
+    expect(canvas).toEqual({ width: 300, height: 150 });
+  });
+
+  it("keeps a scaled-up canvas within 4096x4096 pixels", async () => {
+    const result = await svgToRaster(makeSvg("0 0 2000 2000"), "png", 2);
+
+    expect(result).toMatchObject({ width: 4000, height: 4000 });
+    expect(canvas).toEqual({ width: 4096, height: 4096 });
   });
 
   it("prefers the viewBox over the image's natural size", async () => {

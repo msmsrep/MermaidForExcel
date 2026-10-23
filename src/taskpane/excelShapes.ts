@@ -115,6 +115,19 @@ async function loadPlacement(
   return { left: target.left, top: target.top, name: target.name };
 }
 
+/** The width in points of a diagram on the active sheet, for keeping its size on replace. */
+export function getDiagramWidth(id: string): Promise<number> {
+  return Excel.run(async (ctx) => {
+    const shape = activeShapes(ctx).getItemOrNullObject(id);
+    shape.load(["isNullObject", "width"]);
+    await ctx.sync();
+    if (shape.isNullObject) {
+      throw new Error("Selected diagram no longer exists.");
+    }
+    return shape.width;
+  });
+}
+
 function applyShapeProps(
   shape: Excel.Shape,
   placement: Placement,

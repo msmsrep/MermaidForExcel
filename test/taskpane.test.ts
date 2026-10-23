@@ -11,6 +11,7 @@ const m = vi.hoisted(() => ({
   insertImageShape: vi.fn(),
   insertSvgShape: vi.fn(),
   insertNativeShapes: vi.fn(),
+  getDiagramWidth: vi.fn(),
   initMermaid: vi.fn(),
   renderMermaid: vi.fn(),
   getFlowchartData: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("../src/taskpane/excelShapes", () => ({
   insertImageShape: m.insertImageShape,
   insertSvgShape: m.insertSvgShape,
   insertNativeShapes: m.insertNativeShapes,
+  getDiagramWidth: m.getDiagramWidth,
 }));
 vi.mock("../src/taskpane/excelTable", () => ({ readSelection: m.readSelection }));
 vi.mock("../src/taskpane/render", () => ({
@@ -36,7 +38,10 @@ vi.mock("../src/taskpane/render", () => ({
   getFlowchartData: m.getFlowchartData,
 }));
 vi.mock("../src/taskpane/officeSvg", () => ({ toOfficeSvg: m.toOfficeSvg }));
-vi.mock("../src/taskpane/flowchartModel", () => ({ extractFlowchart: m.extractFlowchart }));
+vi.mock("../src/taskpane/flowchartModel", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/taskpane/flowchartModel")>()),
+  extractFlowchart: m.extractFlowchart,
+}));
 vi.mock("../src/taskpane/image", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/taskpane/image")>()),
   svgToRaster: m.svgToRaster,
@@ -73,6 +78,8 @@ const loadConfirm = () => $<HTMLDivElement>("load-confirm");
 const loadConfirmText = () => $<HTMLSpanElement>("load-confirm-text").textContent;
 const replaceBtn = () => $<HTMLButtonElement>("load-confirm-replace");
 const keepBtn = () => $<HTMLButtonElement>("load-confirm-keep");
+const errorHighlightLine = () =>
+  $<HTMLDivElement>("input-backdrop").querySelector(".error-line")?.textContent;
 const optionLabels = () => Array.from(diagramSelect().options, (o) => [o.value, o.textContent]);
 
 /** Lets pending promise chains (mocked async calls) settle. */
@@ -141,6 +148,8 @@ beforeEach(() => {
   m.insertImageShape.mockResolvedValue("new-id");
   m.insertSvgShape.mockResolvedValue("new-svg-id");
   m.insertNativeShapes.mockResolvedValue("new-group-id");
+  // The 10px-wide test SVG is 7.5pt, so keeping the size means a scale of 1.
+  m.getDiagramWidth.mockResolvedValue(7.5);
   m.toOfficeSvg.mockReturnValue(OFFICE_SVG);
   m.getFlowchartData.mockResolvedValue(FLOW_DATA);
   m.extractFlowchart.mockReturnValue(SHAPE_MODEL);
@@ -233,6 +242,40 @@ describe("preview", () => {
     expect(preview().innerHTML).toBe("");
     expect(insertBtn().disabled).toBe(true);
     expect(downloadBtn().disabled).toBe(true);
+  });
+
+  it("highlights the error line and offers to go to it", async () => {
+    m.renderMermaid.mockRejectedValue(new Error("Parse error on line 2:\n...\nExpecting 'ID'"));
+    type("\ngraph TD\n%% note\nA--> -->");
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(errorHighlightLine()).toBe("A--> -->");
+    const goTo = $<HTMLDivElement>("error").querySelector("button")!;
+    expect(goTo.textContent).toBe("Go to line 4");
+    goTo.click();
+    expect(input().selectionStart).toBe(18);
+  });
+
+  it("does not highlight errors without a line", async () => {
+    m.renderMermaid.mockRejectedValue(new Error("No diagram type detected"));
+    type("bad");
+    await vi.advanceTimersByTimeAsync(250);
+    expect(errorHighlightLine()).toBeUndefined();
+    expect($<HTMLDivElement>("error").querySelector("button")).toBeNull();
+  });
+
+  it.each([
+    ["a successful render", "graph TD\nA-->B"],
+    ["emptying the input", ""],
+  ])("clears the error highlight on %s", async (_, code) => {
+    m.renderMermaid.mockRejectedValueOnce(new Error("Parse error on line 1:"));
+    type("bad");
+    await vi.advanceTimersByTimeAsync(250);
+    expect(errorHighlightLine()).toBe("bad");
+
+    type(code);
+    await vi.advanceTimersByTimeAsync(250);
+    expect(errorHighlightLine()).toBeUndefined();
   });
 
   it("clears the previous error on the next render", async () => {
@@ -645,7 +688,7 @@ describe("insert", () => {
     input().value = "  graph TD\nA-->B \n";
     await click(insertBtn());
 
-    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), format);
+    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), format, 1);
     expect(m.insertImageShape).toHaveBeenCalledWith(RASTER, "graph TD\nA-->B", undefined);
     expect(m.insertSvgShape).not.toHaveBeenCalled();
     expect(errorText()).toBe("");
@@ -767,7 +810,7 @@ describe("download", () => {
   it("downloads PNG as diagram.png", async () => {
     await click(downloadBtn());
 
-    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), "png");
+    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), "png", 1);
     expect(downloads).toEqual([{ href: "data:image/png;base64,B64", download: "diagram.png" }]);
   });
 
@@ -775,7 +818,7 @@ describe("download", () => {
     setFormat("jpeg");
     await click(downloadBtn());
 
-    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), "jpeg");
+    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), "jpeg", 1);
     expect(downloads).toEqual([{ href: "data:image/jpeg;base64,B64", download: "diagram.jpg" }]);
   });
 
@@ -849,5 +892,169 @@ describe("download", () => {
 
     expect(errorText()).toBe("Please render first");
     expect(downloads).toEqual([]);
+  });
+});
+
+describe("output size", () => {
+  const sizeSelect = () => $<HTMLSelectElement>("size-select");
+  const sizeWidth = () => $<HTMLInputElement>("size-width");
+  const keepSize = () => $<HTMLInputElement>("keep-size");
+
+  function setSize(value: string) {
+    sizeSelect().value = value;
+    sizeSelect().dispatchEvent(new Event("change"));
+  }
+
+  beforeEach(async () => {
+    m.listDiagrams.mockResolvedValue(DIAGRAMS);
+    await start();
+  });
+
+  it("starts at 100% with Keep current size checked but disabled without a diagram", () => {
+    expect(sizeSelect().value).toBe("1");
+    expect(sizeWidth().hidden).toBe(true);
+    expect(keepSize().checked).toBe(true);
+    expect(keepSize().disabled).toBe(true);
+  });
+
+  it("enables Keep current size while a diagram is being replaced", async () => {
+    selectDiagram("id-1");
+    await flush();
+    expect(keepSize().disabled).toBe(false);
+
+    selectDiagram("");
+    expect(keepSize().disabled).toBe(true);
+  });
+
+  it("fixes the size of SVG (for shape conversion)", async () => {
+    selectDiagram("id-1");
+    await flush();
+    setFormat("svg-office");
+    expect(sizeSelect().disabled).toBe(true);
+    expect(keepSize().disabled).toBe(true);
+
+    setFormat("png");
+    expect(sizeSelect().disabled).toBe(false);
+    expect(keepSize().disabled).toBe(false);
+  });
+
+  it("shows the width box, starting at the diagram's actual width", () => {
+    setSize("width");
+    expect(sizeWidth().hidden).toBe(false);
+    expect(sizeWidth().value).toBe("8");
+
+    sizeWidth().value = "30";
+    setSize("2");
+    setSize("width");
+    expect(sizeWidth().value).toBe("30");
+  });
+
+  it.each(["png", "jpeg"] as const)("inserts and downloads %s at the chosen scale", async (format) => {
+    setFormat(format);
+    setSize("1.5");
+    await click(insertBtn());
+    await click(downloadBtn());
+
+    expect(m.svgToRaster).toHaveBeenNthCalledWith(1, preview().querySelector("svg"), format, 1.5);
+    expect(m.svgToRaster).toHaveBeenNthCalledWith(2, preview().querySelector("svg"), format, 1.5);
+  });
+
+  it("inserts at the entered width", async () => {
+    setSize("width");
+    sizeWidth().value = "15";
+    await click(insertBtn());
+    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), "png", 2);
+  });
+
+  it("reports an invalid width", async () => {
+    setSize("width");
+    sizeWidth().value = "0";
+    await click(insertBtn());
+    expect(errorText()).toBe("Insert error: Enter a width greater than 0.");
+    expect(m.insertImageShape).not.toHaveBeenCalled();
+  });
+
+  it("scales the SVG shape and the downloaded SVG", async () => {
+    setFormat("svg");
+    setSize("2");
+    await click(insertBtn());
+    await click(downloadBtn());
+
+    expect(m.insertSvgShape.mock.calls[0][0]).toMatchObject({ width: 20, height: 20 });
+    const svg = decodeURIComponent(downloads[0].href.split(",")[1]);
+    expect(svg).toContain('width="20"');
+    expect(svg).toContain('height="20"');
+  });
+
+  it("scales the native shapes", async () => {
+    m.extractFlowchart.mockReturnValue({
+      nodes: [], labels: [],
+      edges: [{
+        from: "A", to: "B", begin: { x: 1, y: 2 }, end: { x: 3, y: 4 },
+        beginArrow: "None", endArrow: "Triangle",
+        line: { color: "#333333", weight: 1, dashStyle: "Solid" }, connectorType: "Straight",
+      }],
+    });
+    setFormat("shapes");
+    setSize("0.5");
+    await click(insertBtn());
+
+    expect(m.insertNativeShapes.mock.calls[0][0].edges[0]).toMatchObject({
+      begin: { x: 0.5, y: 1 }, end: { x: 1.5, y: 2 }, line: { weight: 0.5 },
+    });
+  });
+
+  it("keeps the replaced diagram's width, ignoring Size", async () => {
+    m.getDiagramWidth.mockResolvedValue(30);
+    selectDiagram("id-1");
+    await flush();
+    setSize("0.5");
+    await click(insertBtn());
+
+    expect(m.getDiagramWidth).toHaveBeenCalledWith("id-1");
+    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), "png", 4);
+  });
+
+  it("uses Size when replacing with Keep current size unchecked", async () => {
+    selectDiagram("id-1");
+    await flush();
+    keepSize().checked = false;
+    setSize("0.5");
+    await click(insertBtn());
+
+    expect(m.getDiagramWidth).not.toHaveBeenCalled();
+    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), "png", 0.5);
+  });
+
+  it("downloads at the chosen size even while replacing", async () => {
+    m.getDiagramWidth.mockResolvedValue(30);
+    selectDiagram("id-1");
+    await flush();
+    setSize("0.5");
+    await click(downloadBtn());
+
+    expect(m.getDiagramWidth).not.toHaveBeenCalled();
+    expect(m.svgToRaster).toHaveBeenCalledWith(preview().querySelector("svg"), "png", 0.5);
+  });
+
+  it("inserts SVG (for shape conversion) at the actual size", async () => {
+    selectDiagram("id-1");
+    await flush();
+    setSize("2");
+    setFormat("svg-office");
+    await click(insertBtn());
+
+    expect(m.getDiagramWidth).not.toHaveBeenCalled();
+    expect(m.insertSvgShape.mock.calls[0][0]).toMatchObject({ width: 10, height: 10 });
+  });
+
+  it("reports when the diagram's size is unknown", async () => {
+    m.renderMermaid.mockResolvedValue('<svg id="mermaid-graph" xmlns="http://www.w3.org/2000/svg"></svg>');
+    type("graph TD");
+    await vi.advanceTimersByTimeAsync(250);
+    setSize("width");
+    sizeWidth().value = "100";
+    await click(insertBtn());
+    expect(errorText()).toBe("Insert error: The diagram's size is unknown.");
   });
 });
